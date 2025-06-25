@@ -3,7 +3,7 @@ title: ECHO TUTOR PRO
 emoji: "🗣️"
 colorFrom: blue
 colorTo: indigo
-sdk: static
+sdk: python
 sdk_version: "1.0.0"
 app_file: app.py
 pinned: false
@@ -38,9 +38,21 @@ pip install -r requirements.txt
 
 ### 3. Run the app
 ```bash
-python app.py
+python app.py  # (للتشغيل المحلي فقط)
 ```
 
 ---
 
-For Hugging Face Spaces deployment, see: https://huggingface.co/docs/hub/spaces-config-reference
+## Deploy on Hugging Face Spaces
+
+1. تأكد أن الملفات التالية موجودة في مشروعك:
+   - app.py
+   - config.py
+   - requirements.txt
+   - Procfile
+   - static/ (المجلد)
+   - templates/ (المجلد)
+2. ارفع المشروع إلى Hugging Face Space الخاص بك (راجع التعليمات أعلاه).
+3. لا داعي لتشغيل python app.py في Spaces، سيتم التشغيل تلقائيًا عبر gunicorn.
+
+لمزيد من التفاصيل: https://huggingface.co/docs/hub/spaces-config-reference
