@@ -1,4 +1,5 @@
 import logging
+import os
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 from config import Config
@@ -92,5 +93,5 @@ def chat():
 
 
 if __name__ == "__main__":
-    # هذا مخصص للتشغيل في بيئة التطوير فقط
-    app.run(debug=app.config['FLASK_DEBUG'], port=8899, host='0.0.0.0')
+    port = int(os.environ.get("PORT", 7860))
+    app.run(host="0.0.0.0", port=port)
