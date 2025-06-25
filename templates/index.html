@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ECHO TUTOR PRO</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#1976d2">
+  <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+  <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512.png') }}">
+</head>
+<body>
+  <div class="state-indicator idle" id="state-indicator">Idle</div>
+  <div class="tutor-avatar" id="tutor-avatar">
+    <div class="tutor-face">
+      <div class="tutor-brows">
+        <div class="tutor-brow left"></div>
+        <div class="tutor-brow right"></div>
+      </div>
+      <div class="tutor-eyes">
+        <div class="tutor-eye" id="eye-left">
+          <div class="tutor-eyelid" id="eyelid-left"></div>
+        </div>
+        <div class="tutor-eye" id="eye-right">
+          <div class="tutor-eyelid" id="eyelid-right"></div>
+        </div>
+      </div>
+      <div class="tutor-mouth" id="tutor-mouth">
+        <div class="tutor-tongue" id="tutor-tongue"></div>
+        <div class="tutor-teeth" id="tutor-teeth"></div>
+      </div>
+    </div>
+  </div>
+  <div class="chat-container">
+    <div class="messages" id="messages"></div>
+    <div class="controls">
+      <button class="mic-btn" id="mic-btn" title="Enable/Disable Listening"><span id="mic-icon">🎤</span></button>
+      <button class="mute-btn" id="mute-btn" title="Mute/Unmute" style="background:#b0bec5;color:#222;width:44px;height:44px;font-size:1.2em;border-radius:50%;border:none;outline:none;cursor:pointer;margin-left:2px;">🔇</button>
+      <button class="end-btn" id="end-btn" title="End Conversation" style="background:#e53935;color:#fff;width:44px;height:44px;font-size:1.2em;border-radius:50%;border:none;outline:none;cursor:pointer;margin-left:2px;">⏹</button>
+      <input class="input-box" id="text-input" type="text" placeholder="Speak or type here..." autocomplete="off" />
+      <button class="send-btn" id="send-btn" title="Send">➤</button>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
