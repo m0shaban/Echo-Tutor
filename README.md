@@ -3,8 +3,7 @@ title: ECHO TUTOR PRO
 emoji: "🗣️"
 colorFrom: blue
 colorTo: indigo
-sdk: python
-sdk_version: "1.0.0"
+sdk: docker
 app_file: app.py
 pinned: false
 ---
