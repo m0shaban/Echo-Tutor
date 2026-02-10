@@ -8,50 +8,94 @@ app_file: app.py
 pinned: false
 ---
 
-# ECHO TUTOR PRO
+# ECHO TUTOR PRO 🗣️
 
-This is a professional version of Echo Tutor Light, an AI-powered English language tutor built with Flask and the NVIDIA NIMs API.
+An AI-powered English language tutor with a premium, immersive interface. Practice natural English conversation with real-time corrections, suggestions, and adaptive difficulty.
 
-This version features a robust project structure, persistent conversation state, and professional-grade configuration and logging.
+## ✨ Features
 
-## Features
+- **Streaming AI Responses** — Real-time token-by-token response rendering via SSE
+- **Adaptive Difficulty** — Beginner, Intermediate, and Advanced levels
+- **Conversation Topics** — 8 curated topics: Free Talk, Travel, Food, Tech, Movies, Sports, Work, Daily Life
+- **Premium UI** — Glassmorphism design, animated particle background, 3D orb avatar
+- **Voice Interaction** — Real-time Speech-to-Text (STT) and Text-to-Speech (TTS)
+- **Audio Waveform** — Live microphone visualization using Web Audio API
+- **Smart Corrections** — AI provides inline corrections and vocabulary suggestions
+- **PWA Support** — Installable as a Progressive Web App
+- **Session Persistence** — Conversation history saved across page refreshes
+- **Keyboard Shortcuts** — Ctrl+M (mic), Enter (send), Escape (end)
 
--   Interactive, animated AI avatar.
--   Real-time Speech-to-Text (STT) and Text-to-Speech (TTS).
--   Advanced AI-driven language correction and suggestions.
--   Conversation history is saved in the browser session (persists on page refresh).
--   Professional project structure for easy maintenance and scalability.
-
-## Setup and Installation
+## 🚀 Quick Start
 
 ### 1. Clone the repository
+
 ```bash
 git clone <your-repo-url>
-cd echo-tutor-pro
+cd echo-tutor
 ```
 
-### 2. Install dependencies
+### 2. Set environment variable
+
+```bash
+export NVIDIA_API_KEY="your-api-key-here"
+```
+
+### 3. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Run the app
+### 4. Run locally
+
 ```bash
-python app.py  # (للتشغيل المحلي فقط)
+python app.py
 ```
 
----
+Open `http://localhost:7860` in your browser.
 
-## Deploy on Hugging Face Spaces
+## 🐳 Docker
 
-1. تأكد أن الملفات التالية موجودة في مشروعك:
-   - app.py
-   - config.py
-   - requirements.txt
-   - Procfile
-   - static/ (المجلد)
-   - templates/ (المجلد)
-2. ارفع المشروع إلى Hugging Face Space الخاص بك (راجع التعليمات أعلاه).
-3. لا داعي لتشغيل python app.py في Spaces، سيتم التشغيل تلقائيًا عبر gunicorn.
+```bash
+docker build -t echo-tutor .
+docker run -p 7860:7860 -e NVIDIA_API_KEY="your-key" echo-tutor
+```
 
-لمزيد من التفاصيل: https://huggingface.co/docs/hub/spaces-config-reference
+## 📁 Project Structure
+
+```
+echo-tutor/
+├── app.py              # Flask backend with streaming SSE
+├── config.py           # Configuration (levels, topics, API settings)
+├── requirements.txt    # Python dependencies
+├── Dockerfile          # Docker container configuration
+├── Procfile            # Gunicorn process file
+├── templates/
+│   └── index.html      # Main application template
+└── static/
+    ├── css/style.css   # Premium glassmorphism design system
+    ├── js/script.js    # Application engine (SSE, particles, waveform)
+    ├── manifest.json   # PWA manifest
+    ├── service-worker.js
+    └── icons/
+        ├── icon-192.png
+        └── icon-512.png
+```
+
+## 🔧 API Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/` | GET | Main application page |
+| `/chat` | POST | Non-streaming chat endpoint |
+| `/chat/stream` | POST | SSE streaming chat endpoint |
+| `/topics` | GET | Available topics & difficulty levels |
+| `/health` | GET | Health check with uptime |
+
+## 🌐 Deploy on Hugging Face Spaces
+
+1. Push to your HF Space repository
+2. Set `NVIDIA_API_KEY` as a Space secret
+3. The app runs automatically via Docker
+
+For more: <https://huggingface.co/docs/hub/spaces-config-reference>

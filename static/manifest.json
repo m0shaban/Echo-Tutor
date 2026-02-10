@@ -1,11 +1,11 @@
 {
   "name": "ECHO TUTOR PRO",
-  "short_name": "EchoTutor",
-  "description": "AI-powered English language tutor with animated avatar.",
+  "short_name": "Echo Tutor",
+  "description": "AI-powered English language tutor with real-time conversation, corrections, and suggestions.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f2027",
-  "theme_color": "#1976d2",
+  "background_color": "#0a0e1a",
+  "theme_color": "#0a0e1a",
   "orientation": "portrait",
   "icons": [
     {
