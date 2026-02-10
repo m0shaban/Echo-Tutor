@@ -61,7 +61,9 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
-  overflow: hidden;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -114,6 +116,8 @@ body {
   justify-content: center;
   background: var(--bg-primary);
   animation: fadeIn 0.6s ease;
+  overflow-y: auto;
+  padding: 24px 0;
 }
 .onboarding-screen.hidden {
   opacity: 0;
@@ -287,6 +291,7 @@ body {
   width: 100%;
   max-width: 480px;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   padding: 0 16px;
@@ -968,6 +973,25 @@ body {
   .ring-outer { width: 110px; height: 110px; }
   .ring-inner { width: 94px; height: 94px; }
   .side-panel { width: 100%; right: -100%; }
+
+  /* On very small screens allow page scrolling if needed */
+  body { overflow-y: auto; }
+}
+
+@media (max-height: 720px) {
+  .app-header { padding: 10px 0 8px; }
+  .avatar-section { padding: 6px 0 4px; }
+  .avatar-container { width: 112px; height: 112px; }
+  .avatar-glow { width: 96px; height: 96px; }
+  .ring-outer { width: 104px; height: 104px; }
+  .ring-inner { width: 88px; height: 88px; }
+  .avatar-orb { width: 68px; height: 68px; }
+  .state-label { margin-top: 6px; font-size: 0.7rem; }
+
+  .chat-panel { padding: 12px; margin-bottom: 8px; }
+  .controls-bar { padding: 8px 0 14px; }
+  .ctrl-btn { width: 42px; height: 42px; }
+  .chat-input { padding: 10px 16px; }
 }
 
 @media (min-width: 521px) and (max-width: 768px) {
@@ -1138,6 +1162,7 @@ body {
   top: 0; right: -360px;
   width: 360px;
   height: 100vh;
+  height: 100dvh;
   background: var(--bg-card);
   border-left: 1px solid var(--border-glass);
   z-index: 9000;
