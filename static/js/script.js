@@ -1,349 +1,1145 @@
-/* static/js/script.js */
+/* ============================================
+   ECHO TUTOR PRO — Main Application Engine
+   v4.0 — Multi-lang, Scenarios, Gamification
+   ============================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. DOM Element Selection ---
-    const micBtn = document.getElementById('mic-btn');
-    const micIcon = document.getElementById('mic-icon');
-    const muteBtn = document.getElementById('mute-btn');
-    const endBtn = document.getElementById('end-btn');
-    const sendBtn = document.getElementById('send-btn');
-    const textInput = document.getElementById('text-input');
-    const messagesDiv = document.getElementById('messages');
-    const tutorMouth = document.getElementById('tutor-mouth');
-    const tutorAvatar = document.getElementById('tutor-avatar');
-    const stateIndicator = document.getElementById('state-indicator');
-    const tutorFace = document.querySelector('.tutor-face');
-    const tutorEyes = document.querySelectorAll('.tutor-eye');
 
-    // --- 2. State Management ---
-    let conversationHistory = [];
-    let recognizing = false;
-    let recognition;
-    let autoListen = true;
-    let ended = false;
-    let turn = 'user'; // متغير جديد: من المتحدث الحالي؟
+  // ─── DOM ELEMENTS ───
+  const $ = id => document.getElementById(id);
+  const onboardingScreen = $('onboarding-screen');
+  const appContainer = $('app-container');
+  const startBtn = $('start-btn');
+  const levelCards = $('level-cards');
+  const topicGrid = $('topic-grid');
+  const messagesDiv = $('messages');
+  const textInput = $('text-input');
+  const sendBtn = $('send-btn');
+  const micBtn = $('mic-btn');
+  const muteBtn = $('mute-btn');
+  const endBtn = $('end-btn');
+  const avatarContainer = $('avatar-container');
+  const stateLabel = $('state-label');
+  const headerStatus = $('header-status');
+  const statTime = $('stat-time');
+  const statMsgs = $('stat-msgs');
+  const settingsBtn = $('settings-btn');
+  const particlesCanvas = $('particles-canvas');
+  const waveformCanvas = $('waveform-canvas');
+  const toastEl = $('toast');
+  const emotionIndicator = $('emotion-indicator');
 
-    // --- 3. Speech Recognition (STT) Setup ---
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.lang = 'en-US';
-        recognition.interimResults = false;
-        recognition.continuous = false; // Process speech after a pause
+  // ─── STATE ───
+  let conversationHistory = [];
+  let selectedLevel = 'intermediate';
+  let selectedTopic = 'free';
+  let selectedLanguage = 'en';
+  let selectedScenario = null;
+  let selectedMode = 'topic'; // 'topic' or 'scenario'
+  let recognizing = false;
+  let recognition = null;
+  let autoListen = true;
+  let isMuted = false;
+  let ended = false;
+  let turn = 'user';
+  let sessionStart = null;
+  let sessionTimer = null;
+  let msgCount = 0;
+  let sessionXPStart = 0;
+  let userScrolledUp = false;
+  let audioContext = null;
+  let analyser = null;
+  let micStream = null;
+  let lipSyncInterval = null;
+  let allBadges = [];
 
-        recognition.onresult = (event) => {
-            setIdle();
-            if (turn === 'user') {
-                const transcript = event.results[0][0].transcript;
-                addMessage(transcript, 'user');
-                turn = 'ai';
-                sendMessage();
-            }
-        };
+  // Expose level for exercises
+  window._echoLevel = selectedLevel;
 
-        recognition.onend = () => {
-            recognizing = false;
-            // إذا لم يكن الوضع منتهيًا وautoListen مفعّل ودور المستخدم، أعد فتح المايك
-            if (autoListen && !ended && turn === 'user') {
-                openMic();
-            } else {
-                setIdle();
-            }
-        };
+  // ─── TOPICS FALLBACK ───
+  let topics = [
+    { id: 'free', label: 'Free Talk', icon: '💬' },
+    { id: 'travel', label: 'Travel', icon: '✈️' },
+    { id: 'food', label: 'Food & Cooking', icon: '🍳' },
+    { id: 'tech', label: 'Technology', icon: '💻' },
+    { id: 'movies', label: 'Movies & Shows', icon: '🎬' },
+    { id: 'sports', label: 'Sports', icon: '⚽' },
+    { id: 'work', label: 'Work & Career', icon: '💼' },
+    { id: 'daily', label: 'Daily Life', icon: '🏠' },
+  ];
 
-        recognition.onstart = () => {
-            recognizing = true;
-            setListening();
-        };
-        
-        recognition.onerror = (event) => {
-            console.error("Speech recognition error:", event.error);
-            setIdle();
-        };
+  // ============================================
+  // A. PRONUNCIATION SCORING
+  // ============================================
+  const pronunScores = []; // per-session scores
 
-    } else {
-        micBtn.disabled = true;
-        micBtn.title = "Speech recognition not supported in this browser.";
+  function showPronunciationScore(confidence) {
+    const bar = $('pronunciation-bar');
+    if (!bar) return;
+
+    // Convert 0-1 confidence to 1-10 scale with curve
+    const raw = Math.max(0, Math.min(1, confidence));
+    const score = Math.round(raw * 10);
+    pronunScores.push(score);
+
+    bar.classList.remove('hidden');
+
+    // Stars
+    const starsEl = $('pronun-stars');
+    let starsHTML = '';
+    for (let i = 1; i <= 10; i++) {
+      starsHTML += `<span class="pronun-star ${i <= score ? 'filled' : 'empty'}">★</span>`;
     }
-    
-    // --- 4. Conversation History Persistence ---
-    function saveHistory() {
-        sessionStorage.setItem('conversationHistory', JSON.stringify(conversationHistory));
-    }
+    starsEl.innerHTML = starsHTML;
 
-    function loadHistory() {
-        const savedHistory = sessionStorage.getItem('conversationHistory');
-        if (savedHistory && savedHistory !== '[]') {
-            conversationHistory = JSON.parse(savedHistory);
-            messagesDiv.innerHTML = ''; // Clear any existing messages
-            conversationHistory.forEach(msg => {
-                const senderClass = msg.role === 'user' ? 'user' : 'ai';
-                addMessageToDOM(msg.content, senderClass);
-            });
-        } else {
-            // If no history, start with a welcome message
-            const initialMessage = "Hello! I'm Echo, your English tutor. Let's start a conversation!";
-            addMessage(initialMessage, 'assistant'); // Adds to DOM and history
+    // Number
+    $('pronun-score-num').textContent = `${score}/10`;
+
+    // Bar fill
+    $('pronun-bar-fill').style.width = (score * 10) + '%';
+
+    // Label
+    const labels = [
+      '', 'Keep practicing!', 'Getting there!', 'Not bad!', 'Good effort!',
+      'Nice!', 'Very good!', 'Great!', 'Excellent!', 'Outstanding!', 'Perfect!'
+    ];
+    $('pronun-label').textContent = labels[score] || '';
+
+    // XP tracking for pronunciation
+    if (window.EchoFeatures) window.EchoFeatures.XP.trackPronunciation(score);
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      if (!recognizing) bar.classList.add('hidden');
+    }, 5000);
+  }
+
+  function getAvgPronunciation() {
+    if (pronunScores.length === 0) return '-';
+    const avg = pronunScores.reduce((a, b) => a + b, 0) / pronunScores.length;
+    return avg.toFixed(1) + '/10';
+  }
+
+  // ============================================
+  // B. GRAMMAR TRACKER
+  // ============================================
+  const corrections = []; // { wrong, right, timestamp }
+
+  function parseCorrections(aiText) {
+    // Pattern: "instead of X, say/use Y" or "X → Y"
+    const patterns = [
+      /instead of ["'](.+?)["'],?\s*(?:you could|you can|try|say|use)\s+["'](.+?)["']/gi,
+      /rather than ["'](.+?)["'],?\s*(?:say|use)\s+["'](.+?)["']/gi,
+      /["'](.+?)["']\s*(?:should be|→|->)\s*["'](.+?)["']/gi,
+      /not ["'](.+?)["']\s*but\s*["'](.+?)["']/gi,
+    ];
+
+    patterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(aiText)) !== null) {
+        const wrong = match[1].trim();
+        const right = match[2].trim();
+        if (wrong && right && wrong !== right) {
+          corrections.push({ wrong, right, timestamp: Date.now() });
+          renderCorrections();
+          if (window.EchoFeatures) window.EchoFeatures.XP.trackCorrection();
         }
-    }
+      }
+    });
+    try { localStorage.setItem('echo_corrections', JSON.stringify(corrections)); } catch(e) {}
+  }
 
-    // --- 5. UI and Avatar State Functions ---
-    function setAvatarState(state) {
-        tutorEyes.forEach(eye => { eye.className = 'tutor-eye ' + state; });
-        tutorMouth.className = 'tutor-mouth ' + state;
-        setBrows(state);
-        // Tongue and teeth for speaking
-        if (state === 'speaking') {
-            document.getElementById('tutor-tongue').style.transform = 'translateX(-50%) scaleY(1)';
-            document.getElementById('tutor-teeth').style.transform = 'translateX(-50%) scaleY(1)';
-        } else {
-            document.getElementById('tutor-tongue').style.transform = 'translateX(-50%) scaleY(0)';
-            document.getElementById('tutor-teeth').style.transform = 'translateX(-50%) scaleY(0)';
+  function renderCorrections() {
+    const list = $('corrections-list');
+    const empty = $('grammar-empty');
+    if (!list) return;
+    if (corrections.length > 0 && empty) empty.classList.add('hidden');
+
+    list.innerHTML = '';
+    corrections.slice().reverse().forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'correction-card';
+      card.innerHTML = `
+        <span class="correction-wrong">${c.wrong}</span>
+        <span class="correction-arrow">→</span>
+        <span class="correction-right">${c.right}</span>
+      `;
+      list.appendChild(card);
+    });
+  }
+
+  // ============================================
+  // C. VOCABULARY BUILDER
+  // ============================================
+  let vocabWords = []; // { word, context, added }
+  let fcIndex = 0;
+
+  function parseVocab(aiText) {
+    // Extract bold words as vocab suggestions
+    const boldWords = aiText.match(/\*\*(.+?)\*\*/g);
+    if (boldWords) {
+      boldWords.forEach(bw => {
+        const word = bw.replace(/\*\*/g, '').trim();
+        // Only add if it's a single word or short phrase, not a label
+        if (word.length >= 3 && word.length <= 30 && word.split(' ').length <= 4) {
+          if (!vocabWords.find(v => v.word.toLowerCase() === word.toLowerCase())) {
+            // Extract surrounding context sentence
+            const idx = aiText.indexOf(bw);
+            const contextStart = Math.max(0, aiText.lastIndexOf('.', idx) + 1);
+            const contextEnd = aiText.indexOf('.', idx + bw.length);
+            const context = aiText.slice(contextStart, contextEnd > 0 ? contextEnd + 1 : undefined).trim().slice(0, 80);
+            vocabWords.push({ word, context, added: Date.now() });
+          }
         }
-        if (state === 'idle') {
-            tutorFace.classList.add('smile');
-        } else {
-            tutorFace.classList.remove('smile');
+      });
+    }
+
+    // Extract quoted suggestions
+    const quotedWords = aiText.match(/"([^"]{3,25})"/g);
+    if (quotedWords) {
+      quotedWords.forEach(qw => {
+        const word = qw.replace(/"/g, '').trim();
+        if (word.length >= 3 && !vocabWords.find(v => v.word.toLowerCase() === word.toLowerCase())) {
+          vocabWords.push({ word, context: '', added: Date.now() });
         }
+      });
     }
 
-    function setListening() {
-        tutorAvatar.className = 'tutor-avatar listening';
-        stateIndicator.textContent = 'Listening...';
-        stateIndicator.className = 'state-indicator listening';
-        setAvatarState('listening');
-    }
+    renderVocabList();
+    saveVocab();
+  }
 
-    function setSpeaking() {
-        tutorAvatar.className = 'tutor-avatar speaking';
-        stateIndicator.textContent = 'Speaking...';
-        stateIndicator.className = 'state-indicator speaking';
-        setAvatarState('speaking');
-    }
+  function renderVocabList() {
+    const list = $('vocab-list');
+    const empty = $('vocab-empty');
+    if (!list) return;
+    if (vocabWords.length > 0 && empty) empty.classList.add('hidden');
 
-    function setIdle() {
-        tutorAvatar.className = 'tutor-avatar';
-        stateIndicator.textContent = ended ? 'Ended' : 'Idle';
-        stateIndicator.className = 'state-indicator idle';
-        setAvatarState('idle');
-    }
+    // Clear only word items, keep empty state
+    list.querySelectorAll('.vocab-item').forEach(el => el.remove());
 
-    // --- 6. Core Logic Functions ---
-    function addMessageToDOM(text, senderClass) {
-        const msg = document.createElement('div');
-        msg.className = 'message ' + senderClass;
-        msg.textContent = text;
-        messagesDiv.appendChild(msg);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-
-    function addMessage(text, role) {
-        const senderClass = role === 'user' ? 'user' : 'ai';
-        addMessageToDOM(text, senderClass);
-        conversationHistory.push({ role, content: text });
-        saveHistory();
-    }
-
-    function showTypingIndicator() {
-        const typingMsg = document.createElement('div');
-        typingMsg.className = 'message ai typing-indicator';
-        typingMsg.innerHTML = '<span></span><span></span><span></span>';
-        messagesDiv.appendChild(typingMsg);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        return typingMsg;
-    }
-
-    async function sendMessage() {
-        if (turn !== 'ai') return; // لا ترسل إلا إذا كان دور الذكاء الاصطناعي
-        const typingIndicator = showTypingIndicator();
-        closeMic(); // المايك مغلق أثناء تفكير الذكاء الاصطناعي
-        try {
-            const res = await fetch('/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ history: conversationHistory })
-            });
-            messagesDiv.removeChild(typingIndicator);
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || `Server error: ${res.statusText}`);
-            }
-            const data = await res.json();
-            addMessage(data.response, 'assistant');
-            turn = 'ai-speaking'; // الآن الذكاء الاصطناعي يتحدث
-            speak(data.response);
-        } catch (error) {
-            console.error('Fetch Error:', error);
-            if (document.body.contains(typingIndicator)) {
-                messagesDiv.removeChild(typingIndicator);
-            }
-            addMessageToDOM(error.message, 'ai-error');
-            turn = 'user';
-            openMic();
-        }
-    }
-
-    function speak(text) {
-        if (!('speechSynthesis' in window)) return;
-        window.speechSynthesis.cancel();
-        setSpeaking();
-        closeMic(); // المايك مغلق أثناء تحدث الذكاء الاصطناعي
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = /[\u0600-\u06FF]/.test(text) ? 'ar-SA' : 'en-US';
-        utter.rate = 1.05;
-        utter.onend = () => {
-            setIdle();
-            // بعد انتهاء الذكاء الاصطناعي من التحدث، دور المستخدم
-            if (!ended && autoListen) {
-                turn = 'user';
-                openMic();
-            }
-        };
-        utter.onerror = (event) => {
-            console.error("Speech synthesis error:", event.error);
-            setIdle();
-            turn = 'user';
-            openMic();
-        };
-        window.speechSynthesis.speak(utter);
-    }
-
-    function handleSend() {
-        if (turn !== 'user') return; // لا ترسل إلا إذا كان دور المستخدم
-        const text = textInput.value.trim();
-        if (text) {
-            addMessage(text, 'user');
-            textInput.value = '';
-            turn = 'ai'; // الآن دور الذكاء الاصطناعي
-            sendMessage();
-        }
-    }
-
-    // --- 7. Mic Control ---
-    function openMic() {
-        if (!recognizing && !ended && autoListen && recognition && turn === 'user') {
-            micBtn.classList.add('active');
-            micIcon.textContent = '🛑';
-            try { recognition.start(); } catch (e) { /* ignore if already started */ }
-        }
-    }
-
-    function closeMic() {
-        if (recognizing && recognition) {
-            micBtn.classList.remove('active');
-            micIcon.textContent = '🎤';
-            recognition.stop();
-        }
-        setIdle();
-    }
-
-    // --- 8. Event Listeners ---
-    micBtn.addEventListener('click', () => {
-        if (recognizing) {
-            closeMic();
-        } else {
-            ended = false;
-            autoListen = true;
-            turn = 'user';
-            openMic();
-        }
+    vocabWords.slice().reverse().forEach((v, ri) => {
+      const i = vocabWords.length - 1 - ri;
+      const item = document.createElement('div');
+      item.className = 'vocab-item';
+      item.innerHTML = `
+        <div>
+          <div class="vocab-word">${v.word}</div>
+          ${v.context ? `<div class="vocab-context">${v.context}</div>` : ''}
+        </div>
+        <button class="vocab-remove" data-idx="${i}">×</button>
+      `;
+      list.appendChild(item);
     });
 
-    muteBtn.addEventListener('click', () => {
-        autoListen = !autoListen;
-        muteBtn.textContent = autoListen ? '🔇' : '🔊';
-        muteBtn.title = autoListen ? 'Mute' : 'Unmute';
-        if (!autoListen) {
-            closeMic();
-        } else if (!recognizing && !ended && turn === 'user') {
-            openMic();
+    // Remove buttons
+    list.querySelectorAll('.vocab-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx);
+        vocabWords.splice(idx, 1);
+        renderVocabList();
+        saveVocab();
+      });
+    });
+  }
+
+  // Flashcard system
+  function showFlashcard(index) {
+    if (vocabWords.length === 0) return;
+    fcIndex = ((index % vocabWords.length) + vocabWords.length) % vocabWords.length;
+    const v = vocabWords[fcIndex];
+    $('flashcard-front').textContent = v.word;
+    $('flashcard-back').textContent = v.context || 'No context available';
+    $('fc-counter').textContent = `${fcIndex + 1}/${vocabWords.length}`;
+    const fc = $('flashcard');
+    if (fc) fc.classList.remove('flipped');
+  }
+
+  // Quiz system
+  let quizWordIndex = -1;
+  function startQuiz() {
+    if (vocabWords.length < 2) {
+      $('quiz-question').textContent = 'Need at least 2 words to quiz!';
+      $('quiz-options').innerHTML = '';
+      return;
+    }
+    quizWordIndex = Math.floor(Math.random() * vocabWords.length);
+    const correct = vocabWords[quizWordIndex];
+
+    // Build question
+    $('quiz-question').textContent = `Which word matches: "${correct.context || correct.word}"?`;
+
+    // Build options (1 correct + 2-3 wrong)
+    const opts = [correct.word];
+    const others = vocabWords.filter((_, i) => i !== quizWordIndex);
+    const shuffled = others.sort(() => Math.random() - 0.5).slice(0, Math.min(3, others.length));
+    shuffled.forEach(o => opts.push(o.word));
+
+    // Shuffle options
+    opts.sort(() => Math.random() - 0.5);
+
+    const optsEl = $('quiz-options');
+    const resultEl = $('quiz-result');
+    const nextBtn = $('quiz-next');
+    optsEl.innerHTML = '';
+    resultEl.classList.add('hidden');
+    nextBtn.classList.add('hidden');
+
+    opts.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'quiz-option';
+      btn.textContent = opt;
+      btn.addEventListener('click', () => {
+        // Disable all buttons
+        optsEl.querySelectorAll('.quiz-option').forEach(b => { b.style.pointerEvents = 'none'; });
+
+        if (opt === correct.word) {
+          btn.classList.add('correct');
+          resultEl.textContent = 'Correct! 🎉';
+          resultEl.style.color = '#48bb78';
+        } else {
+          btn.classList.add('wrong');
+          // Highlight correct answer
+          optsEl.querySelectorAll('.quiz-option').forEach(b => {
+            if (b.textContent === correct.word) b.classList.add('correct');
+          });
+          resultEl.textContent = `The answer was: "${correct.word}"`;
+          resultEl.style.color = '#fc8181';
         }
+        resultEl.classList.remove('hidden');
+        nextBtn.classList.remove('hidden');
+      });
+      optsEl.appendChild(btn);
     });
-    
-    endBtn.addEventListener('click', () => {
-        ended = true;
-        autoListen = false;
-        closeMic();
-        window.speechSynthesis.cancel();
-        sessionStorage.removeItem('conversationHistory');
-        conversationHistory = [];
-        messagesDiv.innerHTML = '';
-        turn = 'user';
-        addMessageToDOM("Conversation ended. Start a new one anytime!", 'ai');
+  }
+
+  function saveVocab() {
+    try { localStorage.setItem('echo_vocab', JSON.stringify(vocabWords)); } catch (e) {}
+  }
+  function loadVocab() {
+    try {
+      const saved = localStorage.getItem('echo_vocab');
+      if (saved) vocabWords = JSON.parse(saved);
+    } catch (e) {}
+  }
+
+  // ============================================
+  // D. SESSION SUMMARY & PROGRESS
+  // ============================================
+  function showSessionSummary() {
+    const modal = $('summary-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    // Populate stats
+    if (sessionStart) {
+      const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      $('sum-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    $('sum-msgs').textContent = msgCount;
+    $('sum-corrections').textContent = corrections.length;
+    $('sum-vocab').textContent = vocabWords.length;
+    $('sum-pronun').textContent = getAvgPronunciation();
+
+    // XP earned this session
+    const xpEarned = window.EchoFeatures ? (window.EchoFeatures.XP.data.totalXP - sessionXPStart) : 0;
+    const sumXp = $('sum-xp');
+    if (sumXp) sumXp.textContent = `+${xpEarned}`;
+
+    // Save today's progress
+    saveProgress();
+    renderWeeklyProgress();
+
+    // Render badges in summary
+    if (window.EchoFeatures && allBadges.length) {
+      window.EchoFeatures.XP.renderBadges('badges-grid', allBadges);
+    }
+  }
+
+  function saveProgress() {
+    try {
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      const progress = JSON.parse(localStorage.getItem('echo_progress') || '{}');
+      if (!progress[today]) progress[today] = { minutes: 0, messages: 0, corrections: 0, vocab: 0 };
+      const elapsed = sessionStart ? Math.floor((Date.now() - sessionStart) / 60000) : 0;
+      progress[today].minutes += elapsed;
+      progress[today].messages += msgCount;
+      progress[today].corrections += corrections.length;
+      progress[today].vocab += vocabWords.length;
+      localStorage.setItem('echo_progress', JSON.stringify(progress));
+    } catch (e) {}
+  }
+
+  function renderWeeklyProgress() {
+    const barsEl = $('progress-bars');
+    if (!barsEl) return;
+    barsEl.innerHTML = '';
+
+    const progress = JSON.parse(localStorage.getItem('echo_progress') || '{}');
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    const maxMins = 30; // scale: 30 min = 100%
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const dayData = progress[key] || { minutes: 0 };
+      const height = Math.min(100, (dayData.minutes / maxMins) * 100);
+
+      const dayEl = document.createElement('div');
+      dayEl.className = 'progress-bar-day';
+      dayEl.innerHTML = `
+        <div class="progress-bar-fill" style="height:${Math.max(4, height)}%"></div>
+        <span class="progress-bar-label">${days[d.getDay()]}</span>
+      `;
+      barsEl.appendChild(dayEl);
+    }
+  }
+
+  // ============================================
+  // 1. PARTICLE SYSTEM
+  // ============================================
+  const particles = [];
+  const PARTICLE_COUNT = 60;
+  let pCtx = null;
+
+  function initParticles() {
+    pCtx = particlesCanvas.getContext('2d');
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles.push({
+        x: Math.random() * particlesCanvas.width,
+        y: Math.random() * particlesCanvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        r: Math.random() * 2 + 0.5,
+        alpha: Math.random() * 0.3 + 0.05,
+        color: Math.random() > 0.5 ? '99,179,237' : '159,122,234',
+      });
+    }
+    animateParticles();
+  }
+
+  function resizeCanvas() {
+    particlesCanvas.width = window.innerWidth;
+    particlesCanvas.height = window.innerHeight;
+  }
+
+  function animateParticles() {
+    if (!pCtx) return;
+    const w = particlesCanvas.width, h = particlesCanvas.height;
+    pCtx.clearRect(0, 0, w, h);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+      if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+      pCtx.beginPath();
+      pCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      pCtx.fillStyle = `rgba(${p.color}, ${p.alpha})`;
+      pCtx.fill();
     });
-
-    sendBtn.addEventListener('click', handleSend);
-
-    textInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 120) {
+          pCtx.beginPath();
+          pCtx.moveTo(particles[i].x, particles[i].y);
+          pCtx.lineTo(particles[j].x, particles[j].y);
+          pCtx.strokeStyle = `rgba(99, 179, 237, ${0.04 * (1 - dist / 120)})`;
+          pCtx.lineWidth = 0.5;
+          pCtx.stroke();
         }
-    });
+      }
+    }
+    requestAnimationFrame(animateParticles);
+  }
 
-    // --- 9. Initial Application Load ---
-    loadHistory();
-    setIdle();
+  // ============================================
+  // 2. WAVEFORM VISUALIZER
+  // ============================================
+  function initWaveform() {
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+    } catch (e) {}
+  }
+
+  function connectMicToWaveform(stream) {
+    if (!audioContext || !analyser) return;
+    micStream = audioContext.createMediaStreamSource(stream);
+    micStream.connect(analyser);
+    drawWaveform();
+  }
+
+  function drawWaveform() {
+    if (!analyser || !recognizing) return;
+    const ctx = waveformCanvas.getContext('2d');
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteFrequencyData(dataArray);
+    const w = waveformCanvas.width, h = waveformCanvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const barWidth = w / bufferLength * 2.5;
+    let x = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      const barHeight = (dataArray[i] / 255) * h * 0.8;
+      const gradient = ctx.createLinearGradient(x, h, x, h - barHeight);
+      gradient.addColorStop(0, 'rgba(72, 187, 120, 0.1)');
+      gradient.addColorStop(1, 'rgba(72, 187, 120, 0.6)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, h - barHeight, barWidth - 1, barHeight);
+      x += barWidth;
+    }
+    requestAnimationFrame(drawWaveform);
+  }
+
+  // ============================================
+  // 3. ONBOARDING
+  // ============================================
+  function renderTopics() {
+    topicGrid.innerHTML = '';
+    topics.forEach(t => {
+      const card = document.createElement('button');
+      card.className = 'topic-card' + (t.id === selectedTopic ? ' active' : '');
+      card.dataset.topic = t.id;
+      card.innerHTML = `<span class="topic-icon">${t.icon}</span><span class="topic-name">${t.label}</span>`;
+      card.addEventListener('click', () => {
+        selectedTopic = t.id;
+        topicGrid.querySelectorAll('.topic-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+      });
+      topicGrid.appendChild(card);
+    });
+  }
+
+  levelCards.addEventListener('click', (e) => {
+    const card = e.target.closest('.level-card');
+    if (!card) return;
+    selectedLevel = card.dataset.level;
+    levelCards.querySelectorAll('.level-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+  });
+
+  fetch('/topics').then(r => r.json()).then(data => {
+    if (data.topics) topics = data.topics;
+    if (data.scenarios && window.EchoFeatures) {
+      window.EchoFeatures.Scenarios.data = data.scenarios;
+      window.EchoFeatures.Scenarios.render('scenario-grid');
+    }
+    if (data.badges) {
+      allBadges = data.badges;
+      if (window.EchoFeatures) window.EchoFeatures.XP.renderBadges('badges-full-grid', allBadges);
+    }
+    renderTopics();
+  }).catch(() => renderTopics());
+
+  // Language selection
+  document.querySelectorAll('.lang-card').forEach(card => {
+    card.addEventListener('click', () => {
+      selectedLanguage = card.dataset.lang;
+      document.querySelectorAll('.lang-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+    });
+  });
+
+  // Mode toggle (Topics vs Scenarios)
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedMode = btn.dataset.mode;
+      $('topic-section')?.classList.toggle('hidden', selectedMode !== 'topic');
+      $('scenario-section')?.classList.toggle('hidden', selectedMode !== 'scenario');
+      if (selectedMode === 'topic') selectedScenario = null;
+    });
+  });
+
+  // Scenario selection (delegated)
+  $('scenario-grid')?.addEventListener('click', (e) => {
+    const card = e.target.closest('.scenario-card');
+    if (!card) return;
+    selectedScenario = card.dataset.scenario;
+    $('scenario-grid').querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+  });
+
+  startBtn.addEventListener('click', () => {
+    onboardingScreen.classList.add('hidden');
+    appContainer.classList.remove('hidden');
+    window._echoLevel = selectedLevel;
+    if (window.EchoFeatures) sessionXPStart = window.EchoFeatures.XP.data.totalXP;
+    startSession();
+  });
+
+  function startSession() {
+    sessionStart = Date.now();
+    msgCount = 0;
+    conversationHistory = [];
+    ended = false;
     turn = 'user';
+    updateStats();
+    sessionTimer = setInterval(updateStats, 1000);
+    fetchStreamingResponse([]);
+  }
 
-    // --- 10. Speech Recognition/TTSEvent Hooks for Continuous Conversation ---
-    if (recognition) {
-        recognition.onend = () => {
-            recognizing = false;
-            // إذا لم يكن الوضع منتهيًا وautoListen مفعّل، أعد فتح المايك
-            if (autoListen && !ended) {
-                openMic();
-            } else {
-                setIdle();
+  function updateStats() {
+    if (!sessionStart) return;
+    const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    statTime.textContent = `⏱ ${mins}:${secs.toString().padStart(2, '0')}`;
+    statMsgs.textContent = `💬 ${msgCount}`;
+  }
+
+  // ============================================
+  // 4. AVATAR STATE MANAGEMENT
+  // ============================================
+  function setAvatarState(state) {
+    avatarContainer.classList.remove('idle', 'listening', 'speaking', 'thinking', 'happy');
+    avatarContainer.classList.add(state);
+    const labels = {
+      idle: '💤 Ready to chat',
+      listening: '👂 Listening...',
+      speaking: '🗣️ Speaking...',
+      thinking: '🤔 Thinking...',
+      happy: '😊 Great!',
+    };
+    stateLabel.textContent = labels[state] || 'Ready';
+    headerStatus.textContent = labels[state] || 'Ready';
+  }
+
+  // Eye blink
+  function blink() {
+    const eL = $('eyelid-left'), eR = $('eyelid-right');
+    if (!eL || !eR) return;
+    eL.style.top = '0'; eR.style.top = '0';
+    setTimeout(() => { eL.style.top = '-100%'; eR.style.top = '-100%'; }, 100 + Math.random() * 60);
+  }
+  function randomBlink() {
+    blink();
+    if (Math.random() < 0.2) setTimeout(blink, 200);
+    setTimeout(randomBlink, 2000 + Math.random() * 4000);
+  }
+  setTimeout(randomBlink, 1500);
+
+  // Pupil tracking
+  (function initPupilTracking() {
+    const orb = $('avatar-orb');
+    if (!orb) return;
+    document.addEventListener('mousemove', e => {
+      const rect = orb.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+      const dx = e.clientX - cx, dy = e.clientY - cy;
+      const angle = Math.atan2(dy, dx);
+      const dist = Math.min(Math.sqrt(dx * dx + dy * dy), 150);
+      const m = 3 * dist / 150;
+      document.querySelectorAll('.orb-pupil').forEach(p => {
+        p.style.transform = `translate(${m * Math.cos(angle)}px, ${m * Math.sin(angle)}px)`;
+      });
+    });
+  })();
+
+  // Lip-sync
+  const mouthBars = [1,2,3,4,5].map(i => $('mouth-bar-' + i)).filter(Boolean);
+  function startLipSync() {
+    stopLipSync();
+    lipSyncInterval = setInterval(() => {
+      mouthBars.forEach((bar, i) => {
+        bar.style.height = ((i === 2 ? 8 : 4) + Math.random() * (i === 2 ? 6 : 4)) + 'px';
+      });
+    }, 80);
+  }
+  function stopLipSync() {
+    if (lipSyncInterval) { clearInterval(lipSyncInterval); lipSyncInterval = null; }
+    [3, 4, 5, 4, 3].forEach((h, i) => { if (mouthBars[i]) mouthBars[i].style.height = h + 'px'; });
+  }
+
+  // Emotion system
+  function showEmotion(emoji, dur = 2000) {
+    if (!emotionIndicator) return;
+    emotionIndicator.textContent = emoji;
+    emotionIndicator.classList.add('visible');
+    setTimeout(() => emotionIndicator.classList.remove('visible'), dur);
+  }
+
+  function reactToEmotion(text) {
+    const l = text.toLowerCase();
+    if (/great job|well done|excellent|perfect|fantastic|awesome|well said/i.test(l)) {
+      showEmotion('🌟', 2500);
+      setTimeout(() => { avatarContainer.classList.add('happy'); setTimeout(() => avatarContainer.classList.remove('happy'), 2000); }, 500);
+    } else if (/instead of|should be|not quite|correction/i.test(l)) {
+      showEmotion('✏️', 2000);
+    } else if (/welcome|hello|hey|hi there/i.test(l)) {
+      showEmotion('👋', 2500);
+      setTimeout(() => { avatarContainer.classList.add('happy'); setTimeout(() => avatarContainer.classList.remove('happy'), 2000); }, 300);
+    }
+  }
+
+  // ============================================
+  // 5. SPEECH RECOGNITION (STT) + Pronunciation
+  // ============================================
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.lang = selectedLanguage === 'en' ? 'en-US' : selectedLanguage === 'fr' ? 'fr-FR' : selectedLanguage === 'es' ? 'es-ES' : selectedLanguage === 'de' ? 'de-DE' : 'en-US';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    recognition.onresult = (event) => {
+      if (turn === 'user') {
+        const result = event.results[0][0];
+        const transcript = result.transcript;
+        const confidence = result.confidence; // 0-1
+
+        // Show pronunciation score
+        showPronunciationScore(confidence);
+
+        addMessage(transcript, 'user');
+        turn = 'ai';
+        fetchStreamingResponse(conversationHistory);
+      }
+    };
+
+    recognition.onstart = () => {
+      recognizing = true;
+      setAvatarState('listening');
+      micBtn.classList.add('active');
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(stream => connectMicToWaveform(stream)).catch(() => {});
+      }
+    };
+
+    recognition.onend = () => {
+      recognizing = false;
+      micBtn.classList.remove('active');
+      if (autoListen && !ended && turn === 'user') openMic();
+      else if (turn === 'user') setAvatarState('idle');
+    };
+
+    recognition.onerror = (event) => {
+      recognizing = false;
+      micBtn.classList.remove('active');
+      if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        showToast('Mic error: ' + event.error, 'error');
+      }
+      if (turn === 'user') setAvatarState('idle');
+    };
+  } else {
+    micBtn.disabled = true;
+    showToast('Speech recognition not supported', 'error');
+  }
+
+  // ============================================
+  // 6. CORE MESSAGING
+  // ============================================
+  function addMessageToDOM(text, cls, isStreaming = false) {
+    const msg = document.createElement('div');
+    msg.className = 'message ' + cls + (isStreaming ? ' streaming' : '');
+    msg.innerHTML = formatMessage(text);
+    messagesDiv.appendChild(msg);
+    smartScroll();
+    return msg;
+  }
+
+  function addMessage(text, role) {
+    addMessageToDOM(text, role === 'user' ? 'user' : 'ai');
+    conversationHistory.push({ role, content: text });
+    msgCount++;
+    updateStats();
+    saveHistory();
+  }
+
+  function formatMessage(text) {
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+    text = text.replace(/`(.*?)`/g, '<code style="background:rgba(99,179,237,0.15);padding:1px 5px;border-radius:4px;font-size:0.85em;">$1</code>');
+    text = text.replace(/\n/g, '<br>');
+    return text;
+  }
+
+  function showTypingIndicator() {
+    const div = document.createElement('div');
+    div.className = 'message ai typing-indicator';
+    div.innerHTML = '<span></span><span></span><span></span>';
+    messagesDiv.appendChild(div);
+    smartScroll();
+    return div;
+  }
+
+  function smartScroll() {
+    if (!userScrolledUp) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  messagesDiv.addEventListener('scroll', () => {
+    userScrolledUp = (messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight) > 60;
+  });
+
+  // ============================================
+  // 7. STREAMING FETCH (SSE)
+  // ============================================
+  async function fetchStreamingResponse(history) {
+    closeMic();
+    setAvatarState('thinking');
+    const typingEl = showTypingIndicator();
+
+    try {
+      const res = await fetch('/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ history, level: selectedLevel, topic: selectedTopic, language: selectedLanguage, scenario: selectedScenario }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Server error ${res.status}`);
+      }
+
+      if (typingEl.parentNode) typingEl.remove();
+      const streamMsg = addMessageToDOM('', 'ai', true);
+      let fullText = '';
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      setAvatarState('speaking');
+      startLipSync();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') continue;
+          try {
+            const data = JSON.parse(payload);
+            if (data.error) throw new Error(data.error);
+            if (data.token) {
+              fullText += data.token;
+              streamMsg.innerHTML = formatMessage(fullText);
+              smartScroll();
             }
-        };
-    }
-
-    // --- 11. Natural Face Animation ---
-    function randomBlink() {
-        const leftEyelid = document.getElementById('eyelid-left');
-        const rightEyelid = document.getElementById('eyelid-right');
-        leftEyelid.style.opacity = '1';
-        rightEyelid.style.opacity = '1';
-        setTimeout(() => {
-            leftEyelid.style.opacity = '0';
-            rightEyelid.style.opacity = '0';
-        }, 120 + Math.random() * 80);
-        setTimeout(randomBlink, 2200 + Math.random() * 2000);
-    }
-    setTimeout(randomBlink, 2000);
-
-    function idleSmileAnim() {
-        const mouth = document.getElementById('tutor-mouth');
-        if (tutorAvatar.className === 'tutor-avatar') {
-            mouth.classList.toggle('smile');
+          } catch (e) {
+            if (e.message && !e.message.includes('JSON')) throw e;
+          }
         }
-        setTimeout(idleSmileAnim, 3500 + Math.random() * 2000);
-    }
-    setTimeout(idleSmileAnim, 3000);
+      }
 
-    // Brows movement for attention/listening
-    function setBrows(state) {
-        const leftBrow = document.querySelector('.tutor-brow.left');
-        const rightBrow = document.querySelector('.tutor-brow.right');
-        if (state === 'listening') {
-            leftBrow.style.transform = 'rotate(-2deg) translateY(-4px)';
-            rightBrow.style.transform = 'rotate(2deg) translateY(-4px)';
-        } else if (state === 'speaking') {
-            leftBrow.style.transform = 'rotate(-10deg)';
-            rightBrow.style.transform = 'rotate(10deg)';
-        } else {
-            leftBrow.style.transform = 'rotate(-10deg)';
-            rightBrow.style.transform = 'rotate(10deg)';
+      streamMsg.classList.remove('streaming');
+      conversationHistory.push({ role: 'assistant', content: fullText });
+      msgCount++;
+      updateStats();
+      saveHistory();
+
+      // ─── Process AI response for features ───
+      reactToEmotion(fullText);
+      parseCorrections(fullText);
+      parseVocab(fullText);
+
+      // XP tracking
+      if (window.EchoFeatures) window.EchoFeatures.XP.trackMessage();
+
+      turn = 'ai-speaking';
+      speak(fullText);
+
+    } catch (error) {
+      if (typingEl.parentNode) typingEl.remove();
+      addMessageToDOM(error.message || 'Connection error', 'ai-error');
+      setAvatarState('idle');
+      stopLipSync();
+      turn = 'user';
+      showToast(error.message, 'error');
+      if (autoListen && !ended) openMic();
+    }
+  }
+
+  // ============================================
+  // 8. TEXT-TO-SPEECH (TTS)
+  // ============================================
+  function cleanTextForSpeech(text) {
+    let c = text;
+    c = c.replace(/[\u{1F600}-\u{1F64F}]/gu, '');
+    c = c.replace(/[\u{1F300}-\u{1F5FF}]/gu, '');
+    c = c.replace(/[\u{1F680}-\u{1F6FF}]/gu, '');
+    c = c.replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '');
+    c = c.replace(/[\u{2600}-\u{26FF}]/gu, '');
+    c = c.replace(/[\u{2700}-\u{27BF}]/gu, '');
+    c = c.replace(/[\u{FE00}-\u{FE0F}]/gu, '');
+    c = c.replace(/[\u{1F900}-\u{1F9FF}]/gu, '');
+    c = c.replace(/[\u{1FA00}-\u{1FAFF}]/gu, '');
+    c = c.replace(/[\u{200D}]/gu, '');
+    c = c.replace(/\*\*(.*?)\*\*/g, '$1');
+    c = c.replace(/\*(.*?)\*/g, '$1');
+    c = c.replace(/`(.*?)`/g, '$1');
+    c = c.replace(/#{1,6}\s/g, '');
+    c = c.replace(/\b(Correction|Suggestion|Note|Tip|Example|Hint)\s*:/gi, '');
+    c = c.replace(/[—–•·]/g, ', ');
+    c = c.replace(/[""]/g, '');
+    c = c.replace(/['']/g, "'");
+    c = c.replace(/\n+/g, '. ');
+    c = c.replace(/\s{2,}/g, ' ');
+    c = c.replace(/^[,.\s]+/, '').replace(/[,\s]+$/, '');
+    return c.trim();
+  }
+
+  function speak(text) {
+    if (!('speechSynthesis' in window) || isMuted) { stopLipSync(); finishSpeaking(); return; }
+    window.speechSynthesis.cancel();
+    setAvatarState('speaking');
+    startLipSync();
+    const clean = cleanTextForSpeech(text);
+    if (!clean) { stopLipSync(); finishSpeaking(); return; }
+
+    if (clean.length > 200) { speakChunked(clean); return; }
+
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.lang = /[\u0600-\u06FF]/.test(clean) ? 'ar-SA' : 'en-US';
+    utter.rate = 0.95; utter.pitch = 1.05;
+    const voices = window.speechSynthesis.getVoices();
+    const pref = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural')));
+    if (pref) utter.voice = pref;
+    utter.onend = () => { stopLipSync(); finishSpeaking(); };
+    utter.onerror = () => { stopLipSync(); finishSpeaking(); };
+    window.speechSynthesis.speak(utter);
+  }
+
+  function speakChunked(text) {
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    let idx = 0;
+    function next() {
+      if (idx >= sentences.length) { stopLipSync(); finishSpeaking(); return; }
+      const s = sentences[idx].trim();
+      if (!s) { idx++; next(); return; }
+      const u = new SpeechSynthesisUtterance(s);
+      u.lang = 'en-US'; u.rate = 0.95; u.pitch = 1.05;
+      u.onend = () => { idx++; next(); };
+      u.onerror = () => { idx++; next(); };
+      window.speechSynthesis.speak(u);
+    }
+    next();
+  }
+
+  function finishSpeaking() {
+    stopLipSync();
+    setAvatarState('idle');
+    turn = 'user';
+    if (autoListen && !ended) setTimeout(() => openMic(), 300);
+  }
+
+  // ============================================
+  // 9. MIC CONTROLS
+  // ============================================
+  function openMic() {
+    if (!recognition || recognizing || ended || turn !== 'user') return;
+    try {
+      if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+      recognition.start();
+    } catch (e) {}
+  }
+  function closeMic() {
+    if (recognition && recognizing) try { recognition.abort(); } catch (e) {}
+  }
+
+  micBtn.addEventListener('click', () => {
+    if (recognizing) { closeMic(); return; }
+    if (turn !== 'user' || ended) return;
+    openMic();
+  });
+
+  // ============================================
+  // 10. SEND TEXT
+  // ============================================
+  sendBtn.addEventListener('click', () => sendText());
+  textInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }
+  });
+
+  function sendText() {
+    const text = textInput.value.trim();
+    if (!text || turn !== 'user' || ended) return;
+    textInput.value = '';
+    textInput.style.height = 'auto';
+    addMessage(text, 'user');
+    turn = 'ai';
+    fetchStreamingResponse(conversationHistory);
+  }
+
+  textInput.addEventListener('input', () => {
+    textInput.style.height = 'auto';
+    textInput.style.height = Math.min(textInput.scrollHeight, 100) + 'px';
+  });
+
+  // Mute
+  muteBtn.addEventListener('click', () => {
+    isMuted = !isMuted;
+    muteBtn.classList.toggle('muted', isMuted);
+    const svg = document.getElementById('mute-svg');
+    if (isMuted) {
+      svg.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
+      window.speechSynthesis.cancel(); stopLipSync();
+      showToast('TTS muted', '');
+    } else {
+      svg.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>';
+      showToast('TTS unmuted', 'success');
+    }
+  });
+
+  // ============================================
+  // 11. END CONVERSATION → SHOW SUMMARY
+  // ============================================
+  endBtn.addEventListener('click', () => {
+    ended = true;
+    closeMic();
+    window.speechSynthesis.cancel();
+    stopLipSync();
+    if (sessionTimer) clearInterval(sessionTimer);
+    setAvatarState('idle');
+    turn = 'done';
+    addMessageToDOM('Session ended. Great practice! Refresh to start a new conversation.', 'ai');
+    showSessionSummary();
+  });
+
+  // Summary modal controls
+  $('summary-close')?.addEventListener('click', () => $('summary-modal')?.classList.add('hidden'));
+  $('summary-restart')?.addEventListener('click', () => {
+    $('summary-modal')?.classList.add('hidden');
+    sessionStorage.removeItem('echo_history');
+    location.reload();
+  });
+
+  // ============================================
+  // 12. SIDE PANEL (Grammar + Vocab)
+  // ============================================
+  // Toggle panel with settings button
+  settingsBtn.addEventListener('click', () => {
+    const panel = $('side-panel');
+    panel.classList.toggle('hidden');
+    panel.classList.toggle('open');
+  });
+
+  $('panel-close')?.addEventListener('click', () => {
+    const panel = $('side-panel');
+    panel.classList.remove('open');
+    setTimeout(() => panel.classList.add('hidden'), 350);
+  });
+
+  // Tab switching
+  document.querySelectorAll('.panel-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const target = tab.dataset.tab;
+      $('panel-grammar').classList.toggle('hidden', target !== 'grammar');
+      $('panel-vocab').classList.toggle('hidden', target !== 'vocab');
+    });
+  });
+
+  // Vocab mode switching
+  document.querySelectorAll('.vocab-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.vocab-mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const mode = btn.dataset.mode;
+      $('vocab-list').classList.toggle('hidden', mode !== 'list');
+      $('flashcard-view').classList.toggle('hidden', mode !== 'cards');
+      $('quiz-view').classList.toggle('hidden', mode !== 'quiz');
+      if (mode === 'cards') showFlashcard(0);
+      if (mode === 'quiz') startQuiz();
+    });
+  });
+
+  // Flashcard controls
+  $('flashcard')?.addEventListener('click', () => $('flashcard')?.classList.toggle('flipped'));
+  $('fc-prev')?.addEventListener('click', () => showFlashcard(fcIndex - 1));
+  $('fc-next')?.addEventListener('click', () => showFlashcard(fcIndex + 1));
+  $('quiz-next')?.addEventListener('click', () => startQuiz());
+
+  // ============================================
+  // 13. KEYBOARD SHORTCUTS
+  // ============================================
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'm') { e.preventDefault(); micBtn.click(); }
+    if (e.key === 'Escape' && !ended) endBtn.click();
+  });
+
+  // ============================================
+  // 14. TOAST NOTIFICATIONS
+  // ============================================
+  let toastTimeout = null;
+  function showToast(msg, type = '') {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.className = 'toast' + (type ? ' toast-' + type : '');
+    toastEl.classList.add('show');
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toastEl.classList.remove('show'), 3000);
+  }
+
+  // ============================================
+  // 15. PERSISTENCE
+  // ============================================
+  function saveHistory() {
+    try {
+      sessionStorage.setItem('echo_history', JSON.stringify(conversationHistory));
+      sessionStorage.setItem('echo_level', selectedLevel);
+      sessionStorage.setItem('echo_topic', selectedTopic);
+      sessionStorage.setItem('echo_language', selectedLanguage);
+      sessionStorage.setItem('echo_scenario', selectedScenario || '');
+    } catch (e) {}
+  }
+
+  function loadHistory() {
+    try {
+      const saved = sessionStorage.getItem('echo_history');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          conversationHistory = parsed;
+          selectedLevel = sessionStorage.getItem('echo_level') || selectedLevel;
+          selectedTopic = sessionStorage.getItem('echo_topic') || selectedTopic;
+          selectedLanguage = sessionStorage.getItem('echo_language') || selectedLanguage;
+          selectedScenario = sessionStorage.getItem('echo_scenario') || null;
+          conversationHistory.forEach(msg => {
+            addMessageToDOM(msg.content, msg.role === 'user' ? 'user' : 'ai');
+          });
+          onboardingScreen.classList.add('hidden');
+          appContainer.classList.remove('hidden');
+          sessionStart = Date.now();
+          msgCount = conversationHistory.length;
+          sessionTimer = setInterval(updateStats, 1000);
+          updateStats();
+          turn = 'user';
+          setAvatarState('idle');
+          return true;
         }
-    }
+      }
+    } catch (e) {}
+    return false;
+  }
 
-    // --- 12. Register Service Worker for PWA ---
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/static/service-worker.js')
-                .then(function(reg) { console.log('Service Worker registered!', reg); })
-                .catch(function(err) { console.log('Service Worker registration failed:', err); });
-        });
-    }
+  // ============================================
+  // 16. INIT
+  // ============================================
+  initParticles();
+  initWaveform();
+  loadVocab();
+  renderVocabList();
+
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  }
+
+  if (!loadHistory()) setAvatarState('idle');
 });

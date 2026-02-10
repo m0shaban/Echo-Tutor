@@ -1,48 +1,354 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en" dir="ltr" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ECHO TUTOR PRO</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <title>ECHO TUTOR PRO — AI Language Tutor</title>
+  <meta name="description" content="Practice languages with Echo, your AI-powered tutor. Real-time conversation, corrections, exercises, and progress tracking.">
+  <meta name="theme-color" content="#0a0e1a">
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-  <meta name="theme-color" content="#1976d2">
   <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-  <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <div class="state-indicator idle" id="state-indicator">Idle</div>
-  <div class="tutor-avatar" id="tutor-avatar">
-    <div class="tutor-face">
-      <div class="tutor-brows">
-        <div class="tutor-brow left"></div>
-        <div class="tutor-brow right"></div>
-      </div>
-      <div class="tutor-eyes">
-        <div class="tutor-eye" id="eye-left">
-          <div class="tutor-eyelid" id="eyelid-left"></div>
+
+  <!-- Particle Canvas Background -->
+  <canvas id="particles-canvas"></canvas>
+
+  <!-- Connection Status Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- XP Popup -->
+  <div class="xp-popup" id="xp-popup">+10 XP</div>
+
+  <!-- ============ ONBOARDING SCREEN ============ -->
+  <div class="onboarding-screen" id="onboarding-screen">
+    <div class="onboarding-content">
+      <div class="onboarding-logo">
+        <div class="logo-orb">
+          <div class="logo-ring ring-1"></div>
+          <div class="logo-ring ring-2"></div>
+          <div class="logo-core"></div>
         </div>
-        <div class="tutor-eye" id="eye-right">
-          <div class="tutor-eyelid" id="eyelid-right"></div>
+      </div>
+      <h1 class="onboarding-title">ECHO <span class="accent">TUTOR</span></h1>
+      <p class="onboarding-subtitle">Your AI-Powered Language Tutor</p>
+
+      <!-- Language Selection -->
+      <div class="selection-section">
+        <h3 class="selection-label">Choose Language</h3>
+        <div class="lang-cards" id="lang-cards">
+          <button class="lang-card active" data-lang="en"><span class="lang-flag">🇬🇧</span><span class="lang-name">English</span></button>
+          <button class="lang-card" data-lang="fr"><span class="lang-flag">🇫🇷</span><span class="lang-name">Français</span></button>
+          <button class="lang-card" data-lang="es"><span class="lang-flag">🇪🇸</span><span class="lang-name">Español</span></button>
+          <button class="lang-card" data-lang="de"><span class="lang-flag">🇩🇪</span><span class="lang-name">Deutsch</span></button>
         </div>
       </div>
-      <div class="tutor-mouth" id="tutor-mouth">
-        <div class="tutor-tongue" id="tutor-tongue"></div>
-        <div class="tutor-teeth" id="tutor-teeth"></div>
+
+      <!-- Level Selection -->
+      <div class="selection-section">
+        <h3 class="selection-label">Choose Your Level</h3>
+        <div class="level-cards" id="level-cards">
+          <button class="level-card" data-level="beginner">
+            <span class="level-icon">🌱</span>
+            <span class="level-name">Beginner</span>
+            <span class="level-desc">Simple & encouraging</span>
+          </button>
+          <button class="level-card active" data-level="intermediate">
+            <span class="level-icon">🚀</span>
+            <span class="level-name">Intermediate</span>
+            <span class="level-desc">Natural conversation</span>
+          </button>
+          <button class="level-card" data-level="advanced">
+            <span class="level-icon">⚡</span>
+            <span class="level-name">Advanced</span>
+            <span class="level-desc">Complex & nuanced</span>
+          </button>
+        </div>
       </div>
-    </div>
-  </div>
-  <div class="chat-container">
-    <div class="messages" id="messages"></div>
-    <div class="controls">
-      <button class="mic-btn" id="mic-btn" title="Enable/Disable Listening"><span id="mic-icon">🎤</span></button>
-      <button class="mute-btn" id="mute-btn" title="Mute/Unmute" style="background:#b0bec5;color:#222;width:44px;height:44px;font-size:1.2em;border-radius:50%;border:none;outline:none;cursor:pointer;margin-left:2px;">🔇</button>
-      <button class="end-btn" id="end-btn" title="End Conversation" style="background:#e53935;color:#fff;width:44px;height:44px;font-size:1.2em;border-radius:50%;border:none;outline:none;cursor:pointer;margin-left:2px;">⏹</button>
-      <input class="input-box" id="text-input" type="text" placeholder="Speak or type here..." autocomplete="off" />
-      <button class="send-btn" id="send-btn" title="Send">➤</button>
+
+      <!-- Mode Selection: Topic vs Scenario -->
+      <div class="selection-section">
+        <h3 class="selection-label">Choose Mode</h3>
+        <div class="mode-toggle" id="mode-toggle">
+          <button class="mode-btn active" data-mode="topic">💬 Topics</button>
+          <button class="mode-btn" data-mode="scenario">🎭 Role-Play</button>
+        </div>
+      </div>
+
+      <!-- Topic Selection -->
+      <div class="selection-section" id="topic-section">
+        <h3 class="selection-label">Pick a Topic</h3>
+        <div class="topic-grid" id="topic-grid"></div>
+      </div>
+
+      <!-- Scenario Selection -->
+      <div class="selection-section hidden" id="scenario-section">
+        <h3 class="selection-label">Pick a Scenario</h3>
+        <div class="scenario-grid" id="scenario-grid"></div>
+      </div>
+
+      <button class="start-btn" id="start-btn">
+        <span>Start Conversation</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
     </div>
   </div>
 
+  <!-- ============ MAIN CHAT SCREEN ============ -->
+  <div class="app-container hidden" id="app-container">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="header-orb"><div class="header-orb-core"></div></div>
+        <div class="header-text">
+          <h1 class="header-title">ECHO <span class="accent">TUTOR</span></h1>
+          <span class="header-status" id="header-status">Ready</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <!-- XP / Level Display -->
+        <div class="xp-display" id="xp-display" title="Experience Points">
+          <span class="xp-level" id="xp-level">Lv.1</span>
+          <div class="xp-bar-mini">
+            <div class="xp-bar-mini-fill" id="xp-bar-fill" style="width:0%"></div>
+          </div>
+          <span class="xp-value" id="xp-value">0 XP</span>
+        </div>
+        <!-- Streak -->
+        <div class="streak-display" id="streak-display" title="Practice Streak">
+          <span id="streak-count">🔥 0</span>
+        </div>
+        <div class="session-stats" id="session-stats">
+          <span class="stat" id="stat-time" title="Session time">⏱ 0:00</span>
+          <span class="stat" id="stat-msgs" title="Messages">💬 0</span>
+        </div>
+        <!-- Theme Toggle -->
+        <button class="icon-btn" id="theme-btn" title="Toggle Theme">
+          <svg id="theme-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <!-- Panel Toggle -->
+        <button class="icon-btn" id="settings-btn" title="Grammar & Vocab Panel">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <!-- Exercises -->
+        <button class="icon-btn" id="exercises-btn" title="Practice Exercises">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Avatar Section -->
+    <div class="avatar-section">
+      <div class="avatar-container" id="avatar-container">
+        <div class="avatar-glow" id="avatar-glow"></div>
+        <div class="avatar-ring ring-outer" id="ring-outer"></div>
+        <div class="avatar-ring ring-inner" id="ring-inner"></div>
+        <div class="avatar-particles" id="avatar-particles"></div>
+        <div class="avatar-orb" id="avatar-orb">
+          <div class="orb-face" id="orb-face">
+            <div class="orb-brows">
+              <div class="orb-brow left" id="brow-left"></div>
+              <div class="orb-brow right" id="brow-right"></div>
+            </div>
+            <div class="orb-eyes">
+              <div class="orb-eye left" id="eye-left">
+                <div class="orb-pupil" id="pupil-left"></div>
+                <div class="orb-eyelid" id="eyelid-left"></div>
+                <div class="orb-eye-shine"></div>
+              </div>
+              <div class="orb-eye right" id="eye-right">
+                <div class="orb-pupil" id="pupil-right"></div>
+                <div class="orb-eyelid" id="eyelid-right"></div>
+                <div class="orb-eye-shine"></div>
+              </div>
+            </div>
+            <div class="orb-cheeks">
+              <div class="orb-cheek left" id="cheek-left"></div>
+              <div class="orb-cheek right" id="cheek-right"></div>
+            </div>
+            <div class="orb-mouth-area">
+              <div class="orb-mouth" id="orb-mouth">
+                <div class="mouth-bar" id="mouth-bar-1"></div>
+                <div class="mouth-bar" id="mouth-bar-2"></div>
+                <div class="mouth-bar" id="mouth-bar-3"></div>
+                <div class="mouth-bar" id="mouth-bar-4"></div>
+                <div class="mouth-bar" id="mouth-bar-5"></div>
+              </div>
+            </div>
+          </div>
+          <div class="orb-breath" id="orb-breath"></div>
+        </div>
+        <canvas class="waveform-canvas" id="waveform-canvas" width="200" height="60"></canvas>
+      </div>
+      <div class="emotion-indicator" id="emotion-indicator"></div>
+      <div class="state-label" id="state-label">Ready to chat</div>
+    </div>
+
+    <!-- Chat Messages -->
+    <div class="chat-panel">
+      <div class="messages-container" id="messages"></div>
+    </div>
+
+    <!-- Pronunciation Feedback -->
+    <div class="pronunciation-bar hidden" id="pronunciation-bar">
+      <div class="pronun-score-visual">
+        <div class="pronun-stars" id="pronun-stars"></div>
+        <span class="pronun-score-num" id="pronun-score-num">0/10</span>
+      </div>
+      <div class="pronun-bar-track">
+        <div class="pronun-bar-fill" id="pronun-bar-fill"></div>
+      </div>
+      <div class="pronun-label" id="pronun-label">Say something to see your score</div>
+    </div>
+
+    <!-- Controls Bar -->
+    <div class="controls-bar">
+      <button class="ctrl-btn mic-btn" id="mic-btn" title="Toggle Microphone (Ctrl+M)">
+        <svg class="mic-svg" id="mic-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <div class="mic-pulse" id="mic-pulse"></div>
+      </button>
+      <button class="ctrl-btn mute-btn" id="mute-btn" title="Mute/Unmute TTS">
+        <svg id="mute-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M23 9l-6 6M17 9l6 6"/></svg>
+      </button>
+      <div class="input-wrapper">
+        <input class="chat-input" id="text-input" type="text" placeholder="Type your message..." autocomplete="off" />
+      </div>
+      <button class="ctrl-btn send-btn" id="send-btn" title="Send (Enter)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+      <button class="ctrl-btn end-btn" id="end-btn" title="End Conversation (Esc)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ SESSION SUMMARY MODAL ============ -->
+  <div class="modal-overlay hidden" id="summary-modal">
+    <div class="modal-card summary-card">
+      <div class="modal-header">
+        <h2>Session Summary</h2>
+        <button class="modal-close" id="summary-close">&times;</button>
+      </div>
+      <div class="summary-stats" id="summary-stats">
+        <div class="summary-stat"><span class="summary-stat-icon">⏱</span><span class="summary-stat-val" id="sum-time">0:00</span><span class="summary-stat-label">Duration</span></div>
+        <div class="summary-stat"><span class="summary-stat-icon">💬</span><span class="summary-stat-val" id="sum-msgs">0</span><span class="summary-stat-label">Messages</span></div>
+        <div class="summary-stat"><span class="summary-stat-icon">✏️</span><span class="summary-stat-val" id="sum-corrections">0</span><span class="summary-stat-label">Corrections</span></div>
+        <div class="summary-stat"><span class="summary-stat-icon">📚</span><span class="summary-stat-val" id="sum-vocab">0</span><span class="summary-stat-label">New Words</span></div>
+        <div class="summary-stat"><span class="summary-stat-icon">🎯</span><span class="summary-stat-val" id="sum-pronun">-</span><span class="summary-stat-label">Avg. Pronunciation</span></div>
+        <div class="summary-stat"><span class="summary-stat-icon">⭐</span><span class="summary-stat-val" id="sum-xp">+0</span><span class="summary-stat-label">XP Earned</span></div>
+      </div>
+      <!-- Weekly Progress -->
+      <div class="progress-section">
+        <h3>This Week</h3>
+        <div class="progress-bars" id="progress-bars"></div>
+      </div>
+      <!-- Badges Earned -->
+      <div class="badges-section" id="badges-section">
+        <h3>Badges</h3>
+        <div class="badges-grid" id="badges-grid"></div>
+      </div>
+      <div class="summary-actions">
+        <button class="btn-secondary" id="summary-pdf">📄 Export PDF</button>
+        <button class="btn-primary" id="summary-restart">Start New Session</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ EXERCISES MODAL ============ -->
+  <div class="modal-overlay hidden" id="exercises-modal">
+    <div class="modal-card exercises-card">
+      <div class="modal-header">
+        <h2>Practice Exercises</h2>
+        <button class="modal-close" id="exercises-close">&times;</button>
+      </div>
+      <!-- Exercise Type Selector -->
+      <div class="exercise-types" id="exercise-types">
+        <button class="ex-type-btn active" data-type="fill_blank">Fill Blanks</button>
+        <button class="ex-type-btn" data-type="sentence_reorder">Reorder</button>
+        <button class="ex-type-btn" data-type="translation">Translate</button>
+        <button class="ex-type-btn" data-type="word_match">Word Match</button>
+        <button class="ex-type-btn" data-type="ai_generated">AI Custom</button>
+      </div>
+      <!-- Exercise Content -->
+      <div class="exercise-area" id="exercise-area">
+        <div class="exercise-question" id="exercise-question">Loading...</div>
+        <div class="exercise-options" id="exercise-options"></div>
+        <div class="exercise-input-area hidden" id="exercise-input-area">
+          <input type="text" class="exercise-input" id="exercise-input" placeholder="Type your answer..." />
+          <button class="btn-primary" id="exercise-check">Check</button>
+        </div>
+        <div class="exercise-result hidden" id="exercise-result"></div>
+        <div class="exercise-explain hidden" id="exercise-explain"></div>
+      </div>
+      <div class="exercise-footer">
+        <span class="exercise-progress" id="exercise-progress">1/10</span>
+        <span class="exercise-score" id="exercise-score">Score: 0/0</span>
+        <button class="btn-primary" id="exercise-next">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BADGES MODAL ============ -->
+  <div class="modal-overlay hidden" id="badges-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Your Badges</h2>
+        <button class="modal-close" id="badges-close">&times;</button>
+      </div>
+      <div class="badges-full-grid" id="badges-full-grid"></div>
+    </div>
+  </div>
+
+  <!-- ============ SIDE PANEL (Grammar + Vocab) ============ -->
+  <div class="side-panel hidden" id="side-panel">
+    <div class="panel-header">
+      <div class="panel-tabs">
+        <button class="panel-tab active" data-tab="grammar" id="tab-grammar">Grammar</button>
+        <button class="panel-tab" data-tab="vocab" id="tab-vocab">Vocabulary</button>
+      </div>
+      <button class="panel-close" id="panel-close">&times;</button>
+    </div>
+    <div class="panel-body" id="panel-grammar">
+      <div class="panel-empty" id="grammar-empty"><p>Corrections will appear here as you chat.</p></div>
+      <div class="corrections-list" id="corrections-list"></div>
+    </div>
+    <div class="panel-body hidden" id="panel-vocab">
+      <div class="vocab-controls">
+        <button class="vocab-mode-btn active" data-mode="list" id="vocab-list-btn">List</button>
+        <button class="vocab-mode-btn" data-mode="cards" id="vocab-cards-btn">Flashcards</button>
+        <button class="vocab-mode-btn" data-mode="quiz" id="vocab-quiz-btn">Quiz</button>
+      </div>
+      <div class="vocab-list" id="vocab-list">
+        <div class="panel-empty" id="vocab-empty"><p>New words will be collected as you learn.</p></div>
+      </div>
+      <div class="flashcard-view hidden" id="flashcard-view">
+        <div class="flashcard" id="flashcard">
+          <div class="flashcard-inner" id="flashcard-inner">
+            <div class="flashcard-front" id="flashcard-front">Word</div>
+            <div class="flashcard-back" id="flashcard-back">Definition</div>
+          </div>
+        </div>
+        <div class="flashcard-nav">
+          <button class="fc-btn" id="fc-prev">←</button>
+          <span class="fc-counter" id="fc-counter">1/1</span>
+          <button class="fc-btn" id="fc-next">→</button>
+        </div>
+      </div>
+      <div class="quiz-view hidden" id="quiz-view">
+        <div class="quiz-question" id="quiz-question">Loading...</div>
+        <div class="quiz-options" id="quiz-options"></div>
+        <div class="quiz-result hidden" id="quiz-result"></div>
+        <button class="btn-primary quiz-next hidden" id="quiz-next">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/features.js') }}"></script>
   <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

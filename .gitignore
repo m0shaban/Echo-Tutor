@@ -2,4 +2,10 @@ __pycache__/
 .env
 *.pyc
 venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+Thumbs.db
 .DS_Store
