@@ -5,7 +5,14 @@ import json
 import random
 import tempfile
 from collections import defaultdict
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    Response,
+    stream_with_context,
+)
 from openai import OpenAI
 from config import Config
 from flask_cors import CORS
@@ -13,6 +20,7 @@ from flask_cors import CORS
 # Groq SDK for Whisper
 try:
     from groq import Groq
+
     GROQ_AVAILABLE = True
 except ImportError:
     GROQ_AVAILABLE = False
@@ -94,14 +102,20 @@ except Exception as e:
 
 
 # --- System Prompt Builder (with language + scenario) ---
-def build_system_prompt(level="intermediate", topic="free", language="en", scenario=None):
-    level_config = Config.DIFFICULTY_LEVELS.get(level, Config.DIFFICULTY_LEVELS["intermediate"])
+def build_system_prompt(
+    level="intermediate", topic="free", language="en", scenario=None
+):
+    level_config = Config.DIFFICULTY_LEVELS.get(
+        level, Config.DIFFICULTY_LEVELS["intermediate"]
+    )
     lang_config = Config.LANGUAGES.get(language, Config.LANGUAGES["en"])
     lang_name = lang_config["label"]
 
     # Scenario mode overrides regular topic
     if scenario:
-        scenario_config = next((s for s in Config.SCENARIOS if s["id"] == scenario), None)
+        scenario_config = next(
+            (s for s in Config.SCENARIOS if s["id"] == scenario), None
+        )
         if scenario_config:
             return (
                 f"You are playing the role of {scenario_config['ai_role']}. "
@@ -115,7 +129,9 @@ def build_system_prompt(level="intermediate", topic="free", language="en", scena
                 f"You MAY use **bold** for emphasis.\n"
             )
 
-    topic_config = next((t for t in Config.TOPICS if t["id"] == topic), Config.TOPICS[0])
+    topic_config = next(
+        (t for t in Config.TOPICS if t["id"] == topic), Config.TOPICS[0]
+    )
 
     base = (
         f"You are {lang_config['tutor_name']}, a friendly and expert {lang_name} language tutor. "
@@ -135,8 +151,12 @@ def build_system_prompt(level="intermediate", topic="free", language="en", scena
         "7. **Sound Human**: Write the way a real friendly tutor would speak.\n"
     )
 
-    level_instruction = f"\n**DIFFICULTY**: {level_config['label']} — {level_config['description']}.\n"
-    topic_instruction = f"**TOPIC**: {topic_config['label']} — {topic_config['prompt']}\n"
+    level_instruction = (
+        f"\n**DIFFICULTY**: {level_config['label']} — {level_config['description']}.\n"
+    )
+    topic_instruction = (
+        f"**TOPIC**: {topic_config['label']} — {topic_config['prompt']}\n"
+    )
     lang_instruction = f"**LANGUAGE**: Speak and teach in {lang_name}.\n"
 
     return base + level_instruction + topic_instruction + lang_instruction
@@ -154,28 +174,37 @@ def health():
     whisper_sdk_available = GROQ_AVAILABLE
     whisper_keys_configured = bool(Config.GROQ_API_KEYS)
     whisper_available = whisper_sdk_available and whisper_keys_configured
-    return jsonify({
-        "status": "ok",
-        "uptime_seconds": uptime,
-        "provider": Config.AI_PROVIDER,
-        "model": Config.MODEL_NAME,
-        "ai_available": get_client() is not None,
-        "whisper_available": whisper_available,
-        "whisper_sdk_available": whisper_sdk_available,
-        "whisper_keys_configured": whisper_keys_configured,
-    }), 200
+    return (
+        jsonify(
+            {
+                "status": "ok",
+                "uptime_seconds": uptime,
+                "provider": Config.AI_PROVIDER,
+                "model": Config.MODEL_NAME,
+                "ai_available": get_client() is not None,
+                "whisper_available": whisper_available,
+                "whisper_sdk_available": whisper_sdk_available,
+                "whisper_keys_configured": whisper_keys_configured,
+            }
+        ),
+        200,
+    )
 
 
 @app.route("/topics")
 def topics():
-    return jsonify({
-        "topics": Config.TOPICS,
-        "levels": {k: {"label": v["label"], "description": v["description"]}
-                   for k, v in Config.DIFFICULTY_LEVELS.items()},
-        "languages": Config.LANGUAGES,
-        "scenarios": Config.SCENARIOS,
-        "badges": Config.BADGES,
-    })
+    return jsonify(
+        {
+            "topics": Config.TOPICS,
+            "levels": {
+                k: {"label": v["label"], "description": v["description"]}
+                for k, v in Config.DIFFICULTY_LEVELS.items()
+            },
+            "languages": Config.LANGUAGES,
+            "scenarios": Config.SCENARIOS,
+            "badges": Config.BADGES,
+        }
+    )
 
 
 # ─── Whisper STT Endpoint ───
@@ -209,17 +238,21 @@ def transcribe():
 
         os.unlink(tmp_path)  # Clean up
 
-        return jsonify({
-            "text": transcription.text,
-            "language": getattr(transcription, "language", language),
-            "duration": getattr(transcription, "duration", 0),
-        })
+        return jsonify(
+            {
+                "text": transcription.text,
+                "language": getattr(transcription, "language", language),
+                "duration": getattr(transcription, "duration", 0),
+            }
+        )
 
     except Exception as e:
         logging.error(f"Transcription error: {e}", exc_info=True)
-        if 'tmp_path' in locals():
-            try: os.unlink(tmp_path)
-            except: pass
+        if "tmp_path" in locals():
+            try:
+                os.unlink(tmp_path)
+            except:
+                pass
         return jsonify({"error": str(e)}), 500
 
 
@@ -241,9 +274,14 @@ def chat():
     scenario = data.get("scenario", None)
 
     if not history:
-        return jsonify({"response": get_welcome_message(topic, language, scenario)}), 200
+        return (
+            jsonify({"response": get_welcome_message(topic, language, scenario)}),
+            200,
+        )
 
-    level_config = Config.DIFFICULTY_LEVELS.get(level, Config.DIFFICULTY_LEVELS["intermediate"])
+    level_config = Config.DIFFICULTY_LEVELS.get(
+        level, Config.DIFFICULTY_LEVELS["intermediate"]
+    )
     system_prompt = build_system_prompt(level, topic, language, scenario)
     messages_payload = [{"role": "system", "content": system_prompt}] + history
 
@@ -259,7 +297,10 @@ def chat():
         return jsonify({"response": completion.choices[0].message.content})
     except Exception as e:
         logging.error(f"Error calling API: {e}", exc_info=True)
-        return jsonify({"error": "I'm having trouble right now. Please try again."}), 500
+        return (
+            jsonify({"error": "I'm having trouble right now. Please try again."}),
+            500,
+        )
 
 
 # ─── Chat (streaming) ───
@@ -281,12 +322,18 @@ def chat_stream():
 
     if not history:
         welcome = get_welcome_message(topic, language, scenario)
+
         def welcome_gen():
             yield f"data: {json.dumps({'token': welcome})}\n\n"
             yield "data: [DONE]\n\n"
-        return Response(stream_with_context(welcome_gen()), content_type="text/event-stream")
 
-    level_config = Config.DIFFICULTY_LEVELS.get(level, Config.DIFFICULTY_LEVELS["intermediate"])
+        return Response(
+            stream_with_context(welcome_gen()), content_type="text/event-stream"
+        )
+
+    level_config = Config.DIFFICULTY_LEVELS.get(
+        level, Config.DIFFICULTY_LEVELS["intermediate"]
+    )
     system_prompt = build_system_prompt(level, topic, language, scenario)
     messages_payload = [{"role": "system", "content": system_prompt}] + history
 
@@ -330,7 +377,9 @@ def get_exercises():
 
     for t in types_to_fetch:
         if t in EXERCISES:
-            filtered = [e for e in EXERCISES[t] if e.get("level", "intermediate") == level]
+            filtered = [
+                e for e in EXERCISES[t] if e.get("level", "intermediate") == level
+            ]
             if not filtered:
                 filtered = EXERCISES[t]  # fall back to all levels
             result.extend(filtered)
@@ -354,14 +403,19 @@ def generate_exercises():
     if not errors:
         return jsonify({"error": "No errors provided"}), 400
 
-    errors_text = "\n".join([f"- Wrong: '{e.get('wrong','')}' → Right: '{e.get('right','')}'" for e in errors[:10]])
+    errors_text = "\n".join(
+        [
+            f"- Wrong: '{e.get('wrong','')}' → Right: '{e.get('right','')}'"
+            for e in errors[:10]
+        ]
+    )
 
     prompt = (
         f"Based on these language mistakes a student made:\n{errors_text}\n\n"
         f"Generate 5 fill-in-the-blank exercises at the {level} level that target these specific error patterns. "
         f"Return ONLY valid JSON array, no other text. Each item should have: "
         f'"q" (question with ___ for blank), "options" (4 choices), "answer" (correct), "explain" (brief explanation). '
-        f"Example: {{\"q\":\"She ___ to school.\",\"options\":[\"go\",\"goes\",\"going\",\"gone\"],\"answer\":\"goes\",\"explain\":\"Third person singular.\"}}"
+        f'Example: {{"q":"She ___ to school.","options":["go","goes","going","gone"],"answer":"goes","explain":"Third person singular."}}'
     )
 
     try:
@@ -388,14 +442,18 @@ def get_welcome_message(topic="free", language="en", scenario=None):
     lang_config = Config.LANGUAGES.get(language, Config.LANGUAGES["en"])
 
     if scenario:
-        scenario_config = next((s for s in Config.SCENARIOS if s["id"] == scenario), None)
+        scenario_config = next(
+            (s for s in Config.SCENARIOS if s["id"] == scenario), None
+        )
         if scenario_config:
             return scenario_config["opening"]
 
     if topic == "free":
         return lang_config["welcome"]
 
-    topic_config = next((t for t in Config.TOPICS if t["id"] == topic), Config.TOPICS[0])
+    topic_config = next(
+        (t for t in Config.TOPICS if t["id"] == topic), Config.TOPICS[0]
+    )
     return f"{lang_config['welcome']} {topic_config['prompt']} Ready to start?"
 
 

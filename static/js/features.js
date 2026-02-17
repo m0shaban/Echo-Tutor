@@ -3,8 +3,8 @@
    Theme, Gamification, Exercises, PDF, Whisper
    ============================================ */
 
-window.EchoFeatures = (function() {
-  const $ = id => document.getElementById(id);
+window.EchoFeatures = (function () {
+  const $ = (id) => document.getElementById(id);
 
   // ─── THEME TOGGLE ───
   const Theme = {
@@ -19,22 +19,34 @@ window.EchoFeatures = (function() {
       const next = current === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem('echo_theme', next);
-    }
+    },
   };
 
   // ─── XP & GAMIFICATION ───
   const XP = {
-    data: { totalXP: 0, streak: 0, lastDay: '', messages: 0, corrections: 0, vocab: 0, exercises: 0, perfect_pronun: 0, badges: [] },
+    data: {
+      totalXP: 0,
+      streak: 0,
+      lastDay: '',
+      messages: 0,
+      corrections: 0,
+      vocab: 0,
+      exercises: 0,
+      perfect_pronun: 0,
+      badges: [],
+    },
     load() {
       try {
         const saved = localStorage.getItem('echo_xp');
         if (saved) this.data = { ...this.data, ...JSON.parse(saved) };
         this.updateStreak();
         this.render();
-      } catch(e) {}
+      } catch (e) {}
     },
     save() {
-      try { localStorage.setItem('echo_xp', JSON.stringify(this.data)); } catch(e) {}
+      try {
+        localStorage.setItem('echo_xp', JSON.stringify(this.data));
+      } catch (e) {}
     },
     add(amount, reason) {
       this.data.totalXP += amount;
@@ -43,12 +55,18 @@ window.EchoFeatures = (function() {
       this.showPopup(amount, reason);
       this.checkBadges();
     },
-    getLevel() { return Math.floor(this.data.totalXP / 100) + 1; },
-    getLevelProgress() { return (this.data.totalXP % 100); },
+    getLevel() {
+      return Math.floor(this.data.totalXP / 100) + 1;
+    },
+    getLevelProgress() {
+      return this.data.totalXP % 100;
+    },
     updateStreak() {
       const today = new Date().toISOString().slice(0, 10);
       if (this.data.lastDay === today) return;
-      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const yesterday = new Date(Date.now() - 86400000)
+        .toISOString()
+        .slice(0, 10);
       if (this.data.lastDay === yesterday) {
         this.data.streak++;
       } else if (this.data.lastDay !== today) {
@@ -60,7 +78,10 @@ window.EchoFeatures = (function() {
     render() {
       const lvl = this.getLevel();
       const prog = this.getLevelProgress();
-      const el = (id, val) => { const e = $(id); if (e) e.textContent = val; };
+      const el = (id, val) => {
+        const e = $(id);
+        if (e) e.textContent = val;
+      };
       el('xp-level', `Lv.${lvl}`);
       el('xp-value', `${this.data.totalXP} XP`);
       el('streak-count', `🔥 ${this.data.streak}`);
@@ -76,23 +97,55 @@ window.EchoFeatures = (function() {
       popup.classList.add('show');
       setTimeout(() => popup.classList.remove('show'), 1600);
     },
-    trackMessage() { this.data.messages++; this.add(5, 'Message'); this.save(); },
-    trackCorrection() { this.data.corrections++; this.add(3, 'Learning'); this.save(); },
-    trackVocab() { this.data.vocab++; this.add(2, 'New Word'); this.save(); },
-    trackExercise(correct) { this.data.exercises++; this.add(correct ? 10 : 2, correct ? 'Correct!' : 'Practice'); this.save(); },
-    trackPronunciation(score) { if (score >= 10) { this.data.perfect_pronun++; this.add(15, 'Perfect!'); } this.save(); },
+    trackMessage() {
+      this.data.messages++;
+      this.add(5, 'Message');
+      this.save();
+    },
+    trackCorrection() {
+      this.data.corrections++;
+      this.add(3, 'Learning');
+      this.save();
+    },
+    trackVocab() {
+      this.data.vocab++;
+      this.add(2, 'New Word');
+      this.save();
+    },
+    trackExercise(correct) {
+      this.data.exercises++;
+      this.add(correct ? 10 : 2, correct ? 'Correct!' : 'Practice');
+      this.save();
+    },
+    trackPronunciation(score) {
+      if (score >= 10) {
+        this.data.perfect_pronun++;
+        this.add(15, 'Perfect!');
+      }
+      this.save();
+    },
     checkBadges() {
       const d = this.data;
       const checks = {
-        first_chat: d.messages >= 1, ten_messages: d.messages >= 10, fifty_messages: d.messages >= 50,
-        first_correction: d.corrections >= 1, vocab_10: d.vocab >= 10,
-        streak_3: d.streak >= 3, streak_7: d.streak >= 7, streak_30: d.streak >= 30,
-        exercise_10: d.exercises >= 10, level_5: d.totalXP >= 500, level_10: d.totalXP >= 1000,
-        perfect_pronun: d.perfect_pronun >= 1
+        first_chat: d.messages >= 1,
+        ten_messages: d.messages >= 10,
+        fifty_messages: d.messages >= 50,
+        first_correction: d.corrections >= 1,
+        vocab_10: d.vocab >= 10,
+        streak_3: d.streak >= 3,
+        streak_7: d.streak >= 7,
+        streak_30: d.streak >= 30,
+        exercise_10: d.exercises >= 10,
+        level_5: d.totalXP >= 500,
+        level_10: d.totalXP >= 1000,
+        perfect_pronun: d.perfect_pronun >= 1,
       };
       let newBadge = false;
       Object.entries(checks).forEach(([id, met]) => {
-        if (met && !d.badges.includes(id)) { d.badges.push(id); newBadge = true; }
+        if (met && !d.badges.includes(id)) {
+          d.badges.push(id);
+          newBadge = true;
+        }
       });
       if (newBadge) this.save();
       return newBadge;
@@ -101,53 +154,88 @@ window.EchoFeatures = (function() {
       const grid = $(containerId);
       if (!grid || !allBadges) return;
       grid.innerHTML = '';
-      allBadges.forEach(b => {
+      allBadges.forEach((b) => {
         const earned = this.data.badges.includes(b.id);
         grid.innerHTML += `<div class="badge-item ${earned ? 'earned' : 'locked'}"><span class="badge-icon">${b.icon}</span><span class="badge-label">${b.label}</span><span class="badge-desc">${b.description}</span></div>`;
       });
     },
-    getSessionXP() { return this.data.totalXP; }
+    getSessionXP() {
+      return this.data.totalXP;
+    },
   };
 
   // ─── EXERCISES ENGINE ───
   const Exercises = {
-    pool: [], current: null, index: 0, score: 0, total: 0, type: 'fill_blank',
+    pool: [],
+    current: null,
+    index: 0,
+    score: 0,
+    total: 0,
+    type: 'fill_blank',
     async load(level, type) {
       this.type = type;
       if (type === 'ai_generated') return this.loadAI(level);
       try {
-        const res = await fetch(`/exercises?level=${level}&type=${type}&count=10`);
+        const res = await fetch(
+          `/exercises?level=${level}&type=${type}&count=10`,
+        );
         const data = await res.json();
         this.pool = data.exercises || [];
-        this.index = 0; this.score = 0; this.total = this.pool.length;
+        this.index = 0;
+        this.score = 0;
+        this.total = this.pool.length;
         if (this.pool.length) this.show();
         else this.showEmpty();
-      } catch(e) { this.showEmpty(); }
+      } catch (e) {
+        this.showEmpty();
+      }
     },
     async loadAI(level) {
-      const corrections = JSON.parse(localStorage.getItem('echo_corrections') || '[]');
-      if (!corrections.length) { this.showEmpty('Chat first to get personalized exercises!'); return; }
-      $('exercise-question').textContent = 'Generating exercises from your mistakes...';
+      const corrections = JSON.parse(
+        localStorage.getItem('echo_corrections') || '[]',
+      );
+      if (!corrections.length) {
+        this.showEmpty('Chat first to get personalized exercises!');
+        return;
+      }
+      $('exercise-question').textContent =
+        'Generating exercises from your mistakes...';
       try {
         const res = await fetch('/exercises/generate', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ errors: corrections.slice(-10), level })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ errors: corrections.slice(-10), level }),
         });
         const data = await res.json();
-        this.pool = (data.exercises || []).map((e, i) => ({ ...e, id: 'ai_' + i, type: 'fill_blank' }));
-        this.index = 0; this.score = 0; this.total = this.pool.length;
-        if (this.pool.length) this.show(); else this.showEmpty('Could not generate exercises.');
-      } catch(e) { this.showEmpty('Error generating exercises.'); }
+        this.pool = (data.exercises || []).map((e, i) => ({
+          ...e,
+          id: 'ai_' + i,
+          type: 'fill_blank',
+        }));
+        this.index = 0;
+        this.score = 0;
+        this.total = this.pool.length;
+        if (this.pool.length) this.show();
+        else this.showEmpty('Could not generate exercises.');
+      } catch (e) {
+        this.showEmpty('Error generating exercises.');
+      }
     },
     show() {
-      if (this.index >= this.pool.length) { this.showComplete(); return; }
+      if (this.index >= this.pool.length) {
+        this.showComplete();
+        return;
+      }
       this.current = this.pool[this.index];
       const q = $('exercise-question');
       const opts = $('exercise-options');
       const result = $('exercise-result');
       const explain = $('exercise-explain');
       const inputArea = $('exercise-input-area');
-      if (result) { result.classList.add('hidden'); result.className = 'exercise-result hidden'; }
+      if (result) {
+        result.classList.add('hidden');
+        result.className = 'exercise-result hidden';
+      }
       if (explain) explain.classList.add('hidden');
       if (inputArea) inputArea.classList.add('hidden');
       $('exercise-progress').textContent = `${this.index + 1}/${this.total}`;
@@ -165,15 +253,21 @@ window.EchoFeatures = (function() {
       } else {
         // fill_blank or word_match — multiple choice
         if (q) q.innerHTML = ex.q || ex.word || '';
-        if (ex.type === 'synonym') q.innerHTML += '<br><small style="color:var(--text-muted)">Find the synonym</small>';
-        if (ex.type === 'antonym') q.innerHTML += '<br><small style="color:var(--text-muted)">Find the antonym</small>';
+        if (ex.type === 'synonym')
+          q.innerHTML +=
+            '<br><small style="color:var(--text-muted)">Find the synonym</small>';
+        if (ex.type === 'antonym')
+          q.innerHTML +=
+            '<br><small style="color:var(--text-muted)">Find the antonym</small>';
         opts.innerHTML = '';
         opts.classList.remove('hidden');
-        (ex.options || []).forEach(opt => {
+        (ex.options || []).forEach((opt) => {
           const btn = document.createElement('button');
           btn.className = 'exercise-option';
           btn.textContent = opt;
-          btn.addEventListener('click', () => this.checkAnswer(opt, ex.answer, btn));
+          btn.addEventListener('click', () =>
+            this.checkAnswer(opt, ex.answer, btn),
+          );
           opts.appendChild(btn);
         });
       }
@@ -181,17 +275,20 @@ window.EchoFeatures = (function() {
     showReorder(ex) {
       const q = $('exercise-question');
       const opts = $('exercise-options');
-      q.innerHTML = '<span style="color:var(--text-muted)">Arrange the words in correct order:</span>';
+      q.innerHTML =
+        '<span style="color:var(--text-muted)">Arrange the words in correct order:</span>';
       opts.innerHTML = '';
       const words = [...ex.words].sort(() => Math.random() - 0.5);
       const selected = [];
       const answerArea = document.createElement('div');
       answerArea.className = 'reorder-area';
-      answerArea.innerHTML = '<span style="color:var(--text-hint);font-size:0.8rem">Click words to build the sentence</span>';
+      answerArea.innerHTML =
+        '<span style="color:var(--text-hint);font-size:0.8rem">Click words to build the sentence</span>';
       opts.appendChild(answerArea);
       const wordPool = document.createElement('div');
-      wordPool.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:10px';
-      words.forEach(w => {
+      wordPool.style.cssText =
+        'display:flex;flex-wrap:wrap;gap:8px;margin-top:10px';
+      words.forEach((w) => {
         const chip = document.createElement('span');
         chip.className = 'reorder-word';
         chip.textContent = w;
@@ -204,7 +301,9 @@ window.EchoFeatures = (function() {
             chip.classList.add('placed');
             selected.push(w);
           }
-          answerArea.innerHTML = selected.join(' ') || '<span style="color:var(--text-hint);font-size:0.8rem">Click words</span>';
+          answerArea.innerHTML =
+            selected.join(' ') ||
+            '<span style="color:var(--text-hint);font-size:0.8rem">Click words</span>';
           if (selected.length === words.length) {
             const userAns = selected.join(' ');
             const correct = userAns.toLowerCase() === ex.answer.toLowerCase();
@@ -229,8 +328,13 @@ window.EchoFeatures = (function() {
         if (inp) inp.value = '';
         if (checkBtn) {
           const handler = () => {
-            const userAns = (inp?.value || '').trim().toLowerCase().replace(/[?.!,]/g, '');
-            const correct = [ex.answer, ...(ex.alternatives || [])].some(a => userAns === a.toLowerCase().replace(/[?.!,]/g, ''));
+            const userAns = (inp?.value || '')
+              .trim()
+              .toLowerCase()
+              .replace(/[?.!,]/g, '');
+            const correct = [ex.answer, ...(ex.alternatives || [])].some(
+              (a) => userAns === a.toLowerCase().replace(/[?.!,]/g, ''),
+            );
             if (correct) this.score++;
             this.showResult(correct, ex.answer);
             checkBtn.removeEventListener('click', handler);
@@ -244,7 +348,7 @@ window.EchoFeatures = (function() {
       const isCorrect = selected === correct;
       if (isCorrect) this.score++;
       btn.classList.add(isCorrect ? 'correct' : 'wrong');
-      opts.querySelectorAll('.exercise-option').forEach(b => {
+      opts.querySelectorAll('.exercise-option').forEach((b) => {
         b.classList.add('disabled');
         if (b.textContent === correct) b.classList.add('correct');
       });
@@ -256,14 +360,17 @@ window.EchoFeatures = (function() {
       if (result) {
         result.classList.remove('hidden');
         result.className = `exercise-result ${correct ? 'correct' : 'wrong'}`;
-        result.textContent = correct ? 'Correct! Well done!' : `Incorrect. Answer: ${answer}`;
+        result.textContent = correct
+          ? 'Correct! Well done!'
+          : `Incorrect. Answer: ${answer}`;
       }
       if (explain && this.current?.explain) {
         explain.classList.remove('hidden');
         explain.textContent = this.current.explain;
       }
       XP.trackExercise(correct);
-      $('exercise-score').textContent = `Score: ${this.score}/${this.index + 1}`;
+      $('exercise-score').textContent =
+        `Score: ${this.score}/${this.index + 1}`;
     },
     next() {
       this.index++;
@@ -273,71 +380,96 @@ window.EchoFeatures = (function() {
     showComplete() {
       const q = $('exercise-question');
       const opts = $('exercise-options');
-      if (q) q.innerHTML = `<div style="text-align:center;padding:20px"><h3 style="margin-bottom:10px">Exercise Complete!</h3><p style="color:var(--text-muted)">Score: ${this.score}/${this.total}</p><p style="margin-top:10px">${this.score === this.total ? 'Perfect score! Amazing!' : this.score >= this.total * 0.7 ? 'Great job!' : 'Keep practicing!'}</p></div>`;
+      if (q)
+        q.innerHTML = `<div style="text-align:center;padding:20px"><h3 style="margin-bottom:10px">Exercise Complete!</h3><p style="color:var(--text-muted)">Score: ${this.score}/${this.total}</p><p style="margin-top:10px">${this.score === this.total ? 'Perfect score! Amazing!' : this.score >= this.total * 0.7 ? 'Great job!' : 'Keep practicing!'}</p></div>`;
       if (opts) opts.innerHTML = '';
     },
     showEmpty(msg) {
       const q = $('exercise-question');
-      if (q) q.textContent = msg || 'No exercises available for this type/level.';
+      if (q)
+        q.textContent = msg || 'No exercises available for this type/level.';
       $('exercise-options').innerHTML = '';
-    }
+    },
   };
 
   // ─── PDF EXPORT ───
   const PDF = {
     export(sessionData) {
-      const { duration, messages, corrections, vocab, avgPronun, xp } = sessionData;
+      const { duration, messages, corrections, vocab, avgPronun, xp } =
+        sessionData;
       const lines = [
         'ECHO TUTOR PRO — Session Report',
         '═'.repeat(40),
         `Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
-        `Duration: ${duration}`, `Messages: ${messages}`, `Corrections: ${corrections}`,
-        `New Words: ${vocab}`, `Avg Pronunciation: ${avgPronun}`, `XP Earned: +${xp}`,
-        '', '─'.repeat(40), 'CONVERSATION:', '─'.repeat(40), ''
+        `Duration: ${duration}`,
+        `Messages: ${messages}`,
+        `Corrections: ${corrections}`,
+        `New Words: ${vocab}`,
+        `Avg Pronunciation: ${avgPronun}`,
+        `XP Earned: +${xp}`,
+        '',
+        '─'.repeat(40),
+        'CONVERSATION:',
+        '─'.repeat(40),
+        '',
       ];
       const msgEls = document.querySelectorAll('#messages .message');
-      msgEls.forEach(m => {
+      msgEls.forEach((m) => {
         const role = m.classList.contains('user') ? 'YOU' : 'ECHO';
         lines.push(`[${role}] ${m.textContent.trim()}`);
         lines.push('');
       });
       if (corrections > 0) {
         lines.push('─'.repeat(40), 'CORRECTIONS:', '─'.repeat(40), '');
-        const stored = JSON.parse(localStorage.getItem('echo_corrections') || '[]');
-        stored.forEach(c => lines.push(`✗ ${c.wrong}  →  ✓ ${c.right}`));
+        const stored = JSON.parse(
+          localStorage.getItem('echo_corrections') || '[]',
+        );
+        stored.forEach((c) => lines.push(`✗ ${c.wrong}  →  ✓ ${c.right}`));
       }
       const text = lines.join('\n');
       const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `echo-session-${new Date().toISOString().slice(0,10)}.txt`;
+      a.download = `echo-session-${new Date().toISOString().slice(0, 10)}.txt`;
       a.click();
       URL.revokeObjectURL(url);
-    }
+    },
   };
 
   // ─── WHISPER STT ───
   const Whisper = {
-    recorder: null, chunks: [], recording: false,
+    recorder: null,
+    chunks: [],
+    recording: false,
     async start(lang) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
         this.recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
         this.chunks = [];
-        this.recorder.ondataavailable = e => { if (e.data.size > 0) this.chunks.push(e.data); };
+        this.recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) this.chunks.push(e.data);
+        };
         this.recorder.start();
         this.recording = true;
         return stream;
-      } catch(e) { console.error('Whisper mic error:', e); return null; }
+      } catch (e) {
+        console.error('Whisper mic error:', e);
+        return null;
+      }
     },
     stop() {
-      return new Promise(resolve => {
-        if (!this.recorder || !this.recording) { resolve(null); return; }
+      return new Promise((resolve) => {
+        if (!this.recorder || !this.recording) {
+          resolve(null);
+          return;
+        }
         this.recorder.onstop = () => {
           const blob = new Blob(this.chunks, { type: 'audio/webm' });
           this.recording = false;
-          this.recorder.stream?.getTracks().forEach(t => t.stop());
+          this.recorder.stream?.getTracks().forEach((t) => t.stop());
           resolve(blob);
         };
         this.recorder.stop();
@@ -357,7 +489,8 @@ window.EchoFeatures = (function() {
         if (!res.ok) {
           return {
             ok: false,
-            error: payload?.error || `Transcription request failed (${res.status})`,
+            error:
+              payload?.error || `Transcription request failed (${res.status})`,
           };
         }
 
@@ -373,13 +506,13 @@ window.EchoFeatures = (function() {
           text: payload.text,
           language: payload.language || lang || 'en',
         };
-      } catch(e) {
+      } catch (e) {
         return {
           ok: false,
           error: 'Could not reach transcription service',
         };
       }
-    }
+    },
   };
 
   // ─── SCENARIO HELPERS ───
@@ -389,14 +522,14 @@ window.EchoFeatures = (function() {
       const grid = $(containerId);
       if (!grid || !this.data.length) return;
       grid.innerHTML = '';
-      this.data.forEach(s => {
+      this.data.forEach((s) => {
         const card = document.createElement('button');
         card.className = 'scenario-card';
         card.dataset.scenario = s.id;
         card.innerHTML = `<span class="scenario-icon">${s.icon}</span><span class="scenario-name">${s.label}</span><span class="scenario-desc">${s.description}</span>`;
         grid.appendChild(card);
       });
-    }
+    },
   };
 
   // ─── INIT ───
@@ -409,13 +542,17 @@ window.EchoFeatures = (function() {
       $('exercises-modal')?.classList.toggle('hidden');
       Exercises.load('intermediate', 'fill_blank');
     });
-    $('exercises-close')?.addEventListener('click', () => $('exercises-modal')?.classList.add('hidden'));
+    $('exercises-close')?.addEventListener('click', () =>
+      $('exercises-modal')?.classList.add('hidden'),
+    );
     $('exercise-next')?.addEventListener('click', () => Exercises.next());
 
     // Exercise type tabs
-    document.querySelectorAll('.ex-type-btn').forEach(btn => {
+    document.querySelectorAll('.ex-type-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.ex-type-btn').forEach(b => b.classList.remove('active'));
+        document
+          .querySelectorAll('.ex-type-btn')
+          .forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         const level = window._echoLevel || 'intermediate';
         Exercises.load(level, btn.dataset.type);
@@ -423,8 +560,12 @@ window.EchoFeatures = (function() {
     });
 
     // XP display click -> badges
-    $('xp-display')?.addEventListener('click', () => $('badges-modal')?.classList.toggle('hidden'));
-    $('badges-close')?.addEventListener('click', () => $('badges-modal')?.classList.add('hidden'));
+    $('xp-display')?.addEventListener('click', () =>
+      $('badges-modal')?.classList.toggle('hidden'),
+    );
+    $('badges-close')?.addEventListener('click', () =>
+      $('badges-modal')?.classList.add('hidden'),
+    );
 
     // PDF export
     $('summary-pdf')?.addEventListener('click', () => {
@@ -434,7 +575,7 @@ window.EchoFeatures = (function() {
         corrections: $('sum-corrections')?.textContent || '0',
         vocab: $('sum-vocab')?.textContent || '0',
         avgPronun: $('sum-pronun')?.textContent || '-',
-        xp: $('sum-xp')?.textContent || '0'
+        xp: $('sum-xp')?.textContent || '0',
       });
     });
   }

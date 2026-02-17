@@ -4,9 +4,8 @@
    ============================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
-
   // ─── DOM ELEMENTS ───
-  const $ = id => document.getElementById(id);
+  const $ = (id) => document.getElementById(id);
   const onboardingScreen = $('onboarding-screen');
   const appContainer = $('app-container');
   const startBtn = $('start-btn');
@@ -88,15 +87,23 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
 
   function getLanguageVoiceCode() {
-    return selectedLanguage === 'fr' ? 'fr-FR' :
-      selectedLanguage === 'es' ? 'es-ES' :
-      selectedLanguage === 'de' ? 'de-DE' : 'en-US';
+    return selectedLanguage === 'fr'
+      ? 'fr-FR'
+      : selectedLanguage === 'es'
+        ? 'es-ES'
+        : selectedLanguage === 'de'
+          ? 'de-DE'
+          : 'en-US';
   }
 
   function getSttLanguageCode() {
-    return selectedLanguage === 'fr' ? 'fr' :
-      selectedLanguage === 'es' ? 'es' :
-      selectedLanguage === 'de' ? 'de' : 'en';
+    return selectedLanguage === 'fr'
+      ? 'fr'
+      : selectedLanguage === 'es'
+        ? 'es'
+        : selectedLanguage === 'de'
+          ? 'de'
+          : 'en';
   }
 
   function getVoices() {
@@ -106,24 +113,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function saveVoiceProfiles() {
     try {
-      localStorage.setItem('echo_voice_profiles', JSON.stringify(voiceProfiles));
-      localStorage.setItem('echo_active_voice_profile', activeVoiceProfileId || '');
+      localStorage.setItem(
+        'echo_voice_profiles',
+        JSON.stringify(voiceProfiles),
+      );
+      localStorage.setItem(
+        'echo_active_voice_profile',
+        activeVoiceProfileId || '',
+      );
     } catch (e) {}
   }
 
   function getDefaultVoiceProfiles() {
     const lang = getLanguageVoiceCode();
     return [
-      { id: 'coach', name: 'Coach', voiceName: '', rate: 0.95, pitch: 1.0, volume: 1, lang },
-      { id: 'friendly', name: 'Friendly', voiceName: '', rate: 1.0, pitch: 1.1, volume: 1, lang },
-      { id: 'formal', name: 'Formal', voiceName: '', rate: 0.9, pitch: 0.95, volume: 1, lang },
+      {
+        id: 'coach',
+        name: 'Coach',
+        voiceName: '',
+        rate: 0.95,
+        pitch: 1.0,
+        volume: 1,
+        lang,
+      },
+      {
+        id: 'friendly',
+        name: 'Friendly',
+        voiceName: '',
+        rate: 1.0,
+        pitch: 1.1,
+        volume: 1,
+        lang,
+      },
+      {
+        id: 'formal',
+        name: 'Formal',
+        voiceName: '',
+        rate: 0.9,
+        pitch: 0.95,
+        volume: 1,
+        lang,
+      },
     ];
   }
 
   function ensureVoiceProfilesLoaded() {
     if (voiceProfiles.length) return;
     try {
-      const saved = JSON.parse(localStorage.getItem('echo_voice_profiles') || '[]');
+      const saved = JSON.parse(
+        localStorage.getItem('echo_voice_profiles') || '[]',
+      );
       if (Array.isArray(saved) && saved.length) {
         voiceProfiles = saved;
       } else {
@@ -132,8 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {
       voiceProfiles = getDefaultVoiceProfiles();
     }
-    activeVoiceProfileId = localStorage.getItem('echo_active_voice_profile') || voiceProfiles[0]?.id || null;
-    if (!voiceProfiles.find(p => p.id === activeVoiceProfileId)) {
+    activeVoiceProfileId =
+      localStorage.getItem('echo_active_voice_profile') ||
+      voiceProfiles[0]?.id ||
+      null;
+    if (!voiceProfiles.find((p) => p.id === activeVoiceProfileId)) {
       activeVoiceProfileId = voiceProfiles[0]?.id || null;
     }
     editingVoiceProfileId = activeVoiceProfileId;
@@ -141,7 +183,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getActiveVoiceProfile() {
     ensureVoiceProfilesLoaded();
-    return voiceProfiles.find(p => p.id === activeVoiceProfileId) || voiceProfiles[0] || null;
+    return (
+      voiceProfiles.find((p) => p.id === activeVoiceProfileId) ||
+      voiceProfiles[0] ||
+      null
+    );
   }
 
   function renderVoiceSelect(selectedVoiceName = '') {
@@ -149,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!select) return;
     const voices = getVoices();
     select.innerHTML = '<option value="">Auto voice</option>';
-    voices.forEach(v => {
+    voices.forEach((v) => {
       const option = document.createElement('option');
       option.value = v.name;
       option.textContent = `${v.name} (${v.lang})`;
@@ -172,9 +218,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const container = $('voice-profiles-list');
     if (!container) return;
     container.innerHTML = '';
-    voiceProfiles.forEach(profile => {
+    voiceProfiles.forEach((profile) => {
       const chip = document.createElement('button');
-      chip.className = 'voice-profile-chip' + (profile.id === activeVoiceProfileId ? ' active' : '');
+      chip.className =
+        'voice-profile-chip' +
+        (profile.id === activeVoiceProfileId ? ' active' : '');
       chip.textContent = profile.name;
       chip.addEventListener('click', () => {
         activeVoiceProfileId = profile.id;
@@ -188,7 +236,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function canUseWhisperClient() {
-    return Boolean(window.EchoFeatures?.Whisper && window.MediaRecorder && navigator.mediaDevices?.getUserMedia);
+    return Boolean(
+      window.EchoFeatures?.Whisper &&
+      window.MediaRecorder &&
+      navigator.mediaDevices?.getUserMedia,
+    );
   }
 
   async function refreshWhisperAvailability() {
@@ -208,7 +260,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setSttMode(mode) {
     sttMode = mode;
-    try { localStorage.setItem('echo_stt_mode', sttMode); } catch (e) {}
+    try {
+      localStorage.setItem('echo_stt_mode', sttMode);
+    } catch (e) {}
 
     if (sttMode === 'whisper') {
       useWhisperFallback = true;
@@ -236,17 +290,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const voices = getVoices();
     let selectedVoice = null;
     if (profile?.voiceName) {
-      selectedVoice = voices.find(v => v.name === profile.voiceName) || null;
+      selectedVoice = voices.find((v) => v.name === profile.voiceName) || null;
     }
     if (!selectedVoice) {
-      selectedVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith((utterance.lang || fallbackLang).toLowerCase().split('-')[0])) || null;
+      selectedVoice =
+        voices.find(
+          (v) =>
+            v.lang &&
+            v.lang
+              .toLowerCase()
+              .startsWith(
+                (utterance.lang || fallbackLang).toLowerCase().split('-')[0],
+              ),
+        ) || null;
     }
     if (selectedVoice) utterance.voice = selectedVoice;
   }
 
   function loadAppSettings() {
     try {
-      const saved = JSON.parse(localStorage.getItem('echo_app_settings') || '{}');
+      const saved = JSON.parse(
+        localStorage.getItem('echo_app_settings') || '{}',
+      );
       appSettings = { ...DEFAULT_APP_SETTINGS, ...(saved || {}) };
     } catch (e) {
       appSettings = { ...DEFAULT_APP_SETTINGS };
@@ -276,13 +341,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function applyAppSettings() {
-    document.body.classList.toggle('ui-compact', Boolean(appSettings.compactUI));
-    document.body.classList.toggle('ui-reduced-motion', !appSettings.animations);
+    document.body.classList.toggle(
+      'ui-compact',
+      Boolean(appSettings.compactUI),
+    );
+    document.body.classList.toggle(
+      'ui-reduced-motion',
+      !appSettings.animations,
+    );
     document.body.classList.toggle('no-particles', !appSettings.particles);
     document.body.classList.toggle('no-waveform', !appSettings.waveform);
 
-    if (particlesCanvas) particlesCanvas.style.display = appSettings.particles ? '' : 'none';
-    if (waveformCanvas) waveformCanvas.style.display = appSettings.waveform ? '' : 'none';
+    if (particlesCanvas)
+      particlesCanvas.style.display = appSettings.particles ? '' : 'none';
+    if (waveformCanvas)
+      waveformCanvas.style.display = appSettings.waveform ? '' : 'none';
 
     setSttMode(sttMode);
   }
@@ -335,12 +408,21 @@ document.addEventListener('DOMContentLoaded', () => {
     $('pronun-score-num').textContent = `${score}/10`;
 
     // Bar fill
-    $('pronun-bar-fill').style.width = (score * 10) + '%';
+    $('pronun-bar-fill').style.width = score * 10 + '%';
 
     // Label
     const labels = [
-      '', 'Keep practicing!', 'Getting there!', 'Not bad!', 'Good effort!',
-      'Nice!', 'Very good!', 'Great!', 'Excellent!', 'Outstanding!', 'Perfect!'
+      '',
+      'Keep practicing!',
+      'Getting there!',
+      'Not bad!',
+      'Good effort!',
+      'Nice!',
+      'Very good!',
+      'Great!',
+      'Excellent!',
+      'Outstanding!',
+      'Perfect!',
     ];
     $('pronun-label').textContent = labels[score] || '';
 
@@ -373,7 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
       /not ["'](.+?)["']\s*but\s*["'](.+?)["']/gi,
     ];
 
-    patterns.forEach(pattern => {
+    patterns.forEach((pattern) => {
       let match;
       while ((match = pattern.exec(aiText)) !== null) {
         const wrong = match[1].trim();
@@ -385,7 +467,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
-    try { localStorage.setItem('echo_corrections', JSON.stringify(corrections)); } catch(e) {}
+    try {
+      localStorage.setItem('echo_corrections', JSON.stringify(corrections));
+    } catch (e) {}
   }
 
   function renderCorrections() {
@@ -395,16 +479,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (corrections.length > 0 && empty) empty.classList.add('hidden');
 
     list.innerHTML = '';
-    corrections.slice().reverse().forEach(c => {
-      const card = document.createElement('div');
-      card.className = 'correction-card';
-      card.innerHTML = `
+    corrections
+      .slice()
+      .reverse()
+      .forEach((c) => {
+        const card = document.createElement('div');
+        card.className = 'correction-card';
+        card.innerHTML = `
         <span class="correction-wrong">${c.wrong}</span>
         <span class="correction-arrow">→</span>
         <span class="correction-right">${c.right}</span>
       `;
-      list.appendChild(card);
-    });
+        list.appendChild(card);
+      });
   }
 
   // ============================================
@@ -417,16 +504,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Extract bold words as vocab suggestions
     const boldWords = aiText.match(/\*\*(.+?)\*\*/g);
     if (boldWords) {
-      boldWords.forEach(bw => {
+      boldWords.forEach((bw) => {
         const word = bw.replace(/\*\*/g, '').trim();
         // Only add if it's a single word or short phrase, not a label
-        if (word.length >= 3 && word.length <= 30 && word.split(' ').length <= 4) {
-          if (!vocabWords.find(v => v.word.toLowerCase() === word.toLowerCase())) {
+        if (
+          word.length >= 3 &&
+          word.length <= 30 &&
+          word.split(' ').length <= 4
+        ) {
+          if (
+            !vocabWords.find((v) => v.word.toLowerCase() === word.toLowerCase())
+          ) {
             // Extract surrounding context sentence
             const idx = aiText.indexOf(bw);
             const contextStart = Math.max(0, aiText.lastIndexOf('.', idx) + 1);
             const contextEnd = aiText.indexOf('.', idx + bw.length);
-            const context = aiText.slice(contextStart, contextEnd > 0 ? contextEnd + 1 : undefined).trim().slice(0, 80);
+            const context = aiText
+              .slice(contextStart, contextEnd > 0 ? contextEnd + 1 : undefined)
+              .trim()
+              .slice(0, 80);
             vocabWords.push({ word, context, added: Date.now() });
           }
         }
@@ -436,9 +532,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Extract quoted suggestions
     const quotedWords = aiText.match(/"([^"]{3,25})"/g);
     if (quotedWords) {
-      quotedWords.forEach(qw => {
+      quotedWords.forEach((qw) => {
         const word = qw.replace(/"/g, '').trim();
-        if (word.length >= 3 && !vocabWords.find(v => v.word.toLowerCase() === word.toLowerCase())) {
+        if (
+          word.length >= 3 &&
+          !vocabWords.find((v) => v.word.toLowerCase() === word.toLowerCase())
+        ) {
           vocabWords.push({ word, context: '', added: Date.now() });
         }
       });
@@ -455,24 +554,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (vocabWords.length > 0 && empty) empty.classList.add('hidden');
 
     // Clear only word items, keep empty state
-    list.querySelectorAll('.vocab-item').forEach(el => el.remove());
+    list.querySelectorAll('.vocab-item').forEach((el) => el.remove());
 
-    vocabWords.slice().reverse().forEach((v, ri) => {
-      const i = vocabWords.length - 1 - ri;
-      const item = document.createElement('div');
-      item.className = 'vocab-item';
-      item.innerHTML = `
+    vocabWords
+      .slice()
+      .reverse()
+      .forEach((v, ri) => {
+        const i = vocabWords.length - 1 - ri;
+        const item = document.createElement('div');
+        item.className = 'vocab-item';
+        item.innerHTML = `
         <div>
           <div class="vocab-word">${v.word}</div>
           ${v.context ? `<div class="vocab-context">${v.context}</div>` : ''}
         </div>
         <button class="vocab-remove" data-idx="${i}">×</button>
       `;
-      list.appendChild(item);
-    });
+        list.appendChild(item);
+      });
 
     // Remove buttons
-    list.querySelectorAll('.vocab-remove').forEach(btn => {
+    list.querySelectorAll('.vocab-remove').forEach((btn) => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.idx);
         vocabWords.splice(idx, 1);
@@ -485,7 +587,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Flashcard system
   function showFlashcard(index) {
     if (vocabWords.length === 0) return;
-    fcIndex = ((index % vocabWords.length) + vocabWords.length) % vocabWords.length;
+    fcIndex =
+      ((index % vocabWords.length) + vocabWords.length) % vocabWords.length;
     const v = vocabWords[fcIndex];
     $('flashcard-front').textContent = v.word;
     $('flashcard-back').textContent = v.context || 'No context available';
@@ -506,13 +609,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const correct = vocabWords[quizWordIndex];
 
     // Build question
-    $('quiz-question').textContent = `Which word matches: "${correct.context || correct.word}"?`;
+    $('quiz-question').textContent =
+      `Which word matches: "${correct.context || correct.word}"?`;
 
     // Build options (1 correct + 2-3 wrong)
     const opts = [correct.word];
     const others = vocabWords.filter((_, i) => i !== quizWordIndex);
-    const shuffled = others.sort(() => Math.random() - 0.5).slice(0, Math.min(3, others.length));
-    shuffled.forEach(o => opts.push(o.word));
+    const shuffled = others
+      .sort(() => Math.random() - 0.5)
+      .slice(0, Math.min(3, others.length));
+    shuffled.forEach((o) => opts.push(o.word));
 
     // Shuffle options
     opts.sort(() => Math.random() - 0.5);
@@ -524,13 +630,15 @@ document.addEventListener('DOMContentLoaded', () => {
     resultEl.classList.add('hidden');
     nextBtn.classList.add('hidden');
 
-    opts.forEach(opt => {
+    opts.forEach((opt) => {
       const btn = document.createElement('button');
       btn.className = 'quiz-option';
       btn.textContent = opt;
       btn.addEventListener('click', () => {
         // Disable all buttons
-        optsEl.querySelectorAll('.quiz-option').forEach(b => { b.style.pointerEvents = 'none'; });
+        optsEl.querySelectorAll('.quiz-option').forEach((b) => {
+          b.style.pointerEvents = 'none';
+        });
 
         if (opt === correct.word) {
           btn.classList.add('correct');
@@ -539,7 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           btn.classList.add('wrong');
           // Highlight correct answer
-          optsEl.querySelectorAll('.quiz-option').forEach(b => {
+          optsEl.querySelectorAll('.quiz-option').forEach((b) => {
             if (b.textContent === correct.word) b.classList.add('correct');
           });
           resultEl.textContent = `The answer was: "${correct.word}"`;
@@ -553,7 +661,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function saveVocab() {
-    try { localStorage.setItem('echo_vocab', JSON.stringify(vocabWords)); } catch (e) {}
+    try {
+      localStorage.setItem('echo_vocab', JSON.stringify(vocabWords));
+    } catch (e) {}
   }
   function loadVocab() {
     try {
@@ -583,7 +693,9 @@ document.addEventListener('DOMContentLoaded', () => {
     $('sum-pronun').textContent = getAvgPronunciation();
 
     // XP earned this session
-    const xpEarned = window.EchoFeatures ? (window.EchoFeatures.XP.data.totalXP - sessionXPStart) : 0;
+    const xpEarned = window.EchoFeatures
+      ? window.EchoFeatures.XP.data.totalXP - sessionXPStart
+      : 0;
     const sumXp = $('sum-xp');
     if (sumXp) sumXp.textContent = `+${xpEarned}`;
 
@@ -600,9 +712,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function saveProgress() {
     try {
       const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-      const progress = JSON.parse(localStorage.getItem('echo_progress') || '{}');
-      if (!progress[today]) progress[today] = { minutes: 0, messages: 0, corrections: 0, vocab: 0 };
-      const elapsed = sessionStart ? Math.floor((Date.now() - sessionStart) / 60000) : 0;
+      const progress = JSON.parse(
+        localStorage.getItem('echo_progress') || '{}',
+      );
+      if (!progress[today])
+        progress[today] = { minutes: 0, messages: 0, corrections: 0, vocab: 0 };
+      const elapsed = sessionStart
+        ? Math.floor((Date.now() - sessionStart) / 60000)
+        : 0;
       progress[today].minutes += elapsed;
       progress[today].messages += msgCount;
       progress[today].corrections += corrections.length;
@@ -670,17 +787,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function animateParticles() {
     if (!pCtx) return;
-    const w = particlesCanvas.width, h = particlesCanvas.height;
+    const w = particlesCanvas.width,
+      h = particlesCanvas.height;
     if (!appSettings.particles) {
       pCtx.clearRect(0, 0, w, h);
       requestAnimationFrame(animateParticles);
       return;
     }
     pCtx.clearRect(0, 0, w, h);
-    particles.forEach(p => {
-      p.x += p.vx; p.y += p.vy;
-      if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
-      if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+    particles.forEach((p) => {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0) p.x = w;
+      if (p.x > w) p.x = 0;
+      if (p.y < 0) p.y = h;
+      if (p.y > h) p.y = 0;
       pCtx.beginPath();
       pCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       pCtx.fillStyle = `rgba(${p.color}, ${p.alpha})`;
@@ -728,9 +849,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     analyser.getByteFrequencyData(dataArray);
-    const w = waveformCanvas.width, h = waveformCanvas.height;
+    const w = waveformCanvas.width,
+      h = waveformCanvas.height;
     ctx.clearRect(0, 0, w, h);
-    const barWidth = w / bufferLength * 2.5;
+    const barWidth = (w / bufferLength) * 2.5;
     let x = 0;
     for (let i = 0; i < bufferLength; i++) {
       const barHeight = (dataArray[i] / 255) * h * 0.8;
@@ -749,14 +871,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
   function renderTopics() {
     topicGrid.innerHTML = '';
-    topics.forEach(t => {
+    topics.forEach((t) => {
       const card = document.createElement('button');
       card.className = 'topic-card' + (t.id === selectedTopic ? ' active' : '');
       card.dataset.topic = t.id;
       card.innerHTML = `<span class="topic-icon">${t.icon}</span><span class="topic-name">${t.label}</span>`;
       card.addEventListener('click', () => {
         selectedTopic = t.id;
-        topicGrid.querySelectorAll('.topic-card').forEach(c => c.classList.remove('active'));
+        topicGrid
+          .querySelectorAll('.topic-card')
+          .forEach((c) => c.classList.remove('active'));
         card.classList.add('active');
       });
       topicGrid.appendChild(card);
@@ -767,41 +891,54 @@ document.addEventListener('DOMContentLoaded', () => {
     const card = e.target.closest('.level-card');
     if (!card) return;
     selectedLevel = card.dataset.level;
-    levelCards.querySelectorAll('.level-card').forEach(c => c.classList.remove('active'));
+    levelCards
+      .querySelectorAll('.level-card')
+      .forEach((c) => c.classList.remove('active'));
     card.classList.add('active');
   });
 
-  fetch('/topics').then(r => r.json()).then(data => {
-    if (data.topics) topics = data.topics;
-    if (data.scenarios && window.EchoFeatures) {
-      window.EchoFeatures.Scenarios.data = data.scenarios;
-      window.EchoFeatures.Scenarios.render('scenario-grid');
-    }
-    if (data.badges) {
-      allBadges = data.badges;
-      if (window.EchoFeatures) window.EchoFeatures.XP.renderBadges('badges-full-grid', allBadges);
-    }
-    renderTopics();
-  }).catch(() => renderTopics());
+  fetch('/topics')
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.topics) topics = data.topics;
+      if (data.scenarios && window.EchoFeatures) {
+        window.EchoFeatures.Scenarios.data = data.scenarios;
+        window.EchoFeatures.Scenarios.render('scenario-grid');
+      }
+      if (data.badges) {
+        allBadges = data.badges;
+        if (window.EchoFeatures)
+          window.EchoFeatures.XP.renderBadges('badges-full-grid', allBadges);
+      }
+      renderTopics();
+    })
+    .catch(() => renderTopics());
 
   // Language selection
-  document.querySelectorAll('.lang-card').forEach(card => {
+  document.querySelectorAll('.lang-card').forEach((card) => {
     card.addEventListener('click', () => {
       selectedLanguage = card.dataset.lang;
       if (recognition) recognition.lang = getLanguageVoiceCode();
-      document.querySelectorAll('.lang-card').forEach(c => c.classList.remove('active'));
+      document
+        .querySelectorAll('.lang-card')
+        .forEach((c) => c.classList.remove('active'));
       card.classList.add('active');
     });
   });
 
   // Mode toggle (Topics vs Scenarios)
-  document.querySelectorAll('.mode-btn').forEach(btn => {
+  document.querySelectorAll('.mode-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      document
+        .querySelectorAll('.mode-btn')
+        .forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       selectedMode = btn.dataset.mode;
       $('topic-section')?.classList.toggle('hidden', selectedMode !== 'topic');
-      $('scenario-section')?.classList.toggle('hidden', selectedMode !== 'scenario');
+      $('scenario-section')?.classList.toggle(
+        'hidden',
+        selectedMode !== 'scenario',
+      );
       if (selectedMode === 'topic') selectedScenario = null;
     });
   });
@@ -811,7 +948,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const card = e.target.closest('.scenario-card');
     if (!card) return;
     selectedScenario = card.dataset.scenario;
-    $('scenario-grid').querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
+    $('scenario-grid')
+      .querySelectorAll('.scenario-card')
+      .forEach((c) => c.classList.remove('active'));
     card.classList.add('active');
   });
 
@@ -819,7 +958,8 @@ document.addEventListener('DOMContentLoaded', () => {
     onboardingScreen.classList.add('hidden');
     appContainer.classList.remove('hidden');
     window._echoLevel = selectedLevel;
-    if (window.EchoFeatures) sessionXPStart = window.EchoFeatures.XP.data.totalXP;
+    if (window.EchoFeatures)
+      sessionXPStart = window.EchoFeatures.XP.data.totalXP;
     startSession();
   });
 
@@ -847,7 +987,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // 4. AVATAR STATE MANAGEMENT
   // ============================================
   function setAvatarState(state) {
-    avatarContainer.classList.remove('idle', 'listening', 'speaking', 'thinking', 'happy');
+    avatarContainer.classList.remove(
+      'idle',
+      'listening',
+      'speaking',
+      'thinking',
+      'happy',
+    );
     avatarContainer.classList.add(state);
     const labels = {
       idle: '💤 Ready to chat',
@@ -862,10 +1008,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Eye blink
   function blink() {
-    const eL = $('eyelid-left'), eR = $('eyelid-right');
+    const eL = $('eyelid-left'),
+      eR = $('eyelid-right');
     if (!eL || !eR) return;
-    eL.style.top = '0'; eR.style.top = '0';
-    setTimeout(() => { eL.style.top = '-100%'; eR.style.top = '-100%'; }, 100 + Math.random() * 60);
+    eL.style.top = '0';
+    eR.style.top = '0';
+    setTimeout(
+      () => {
+        eL.style.top = '-100%';
+        eR.style.top = '-100%';
+      },
+      100 + Math.random() * 60,
+    );
   }
   function randomBlink() {
     blink();
@@ -878,32 +1032,42 @@ document.addEventListener('DOMContentLoaded', () => {
   (function initPupilTracking() {
     const orb = $('avatar-orb');
     if (!orb) return;
-    document.addEventListener('mousemove', e => {
+    document.addEventListener('mousemove', (e) => {
       const rect = orb.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-      const dx = e.clientX - cx, dy = e.clientY - cy;
+      const cx = rect.left + rect.width / 2,
+        cy = rect.top + rect.height / 2;
+      const dx = e.clientX - cx,
+        dy = e.clientY - cy;
       const angle = Math.atan2(dy, dx);
       const dist = Math.min(Math.sqrt(dx * dx + dy * dy), 150);
-      const m = 3 * dist / 150;
-      document.querySelectorAll('.orb-pupil').forEach(p => {
+      const m = (3 * dist) / 150;
+      document.querySelectorAll('.orb-pupil').forEach((p) => {
         p.style.transform = `translate(${m * Math.cos(angle)}px, ${m * Math.sin(angle)}px)`;
       });
     });
   })();
 
   // Lip-sync
-  const mouthBars = [1,2,3,4,5].map(i => $('mouth-bar-' + i)).filter(Boolean);
+  const mouthBars = [1, 2, 3, 4, 5]
+    .map((i) => $('mouth-bar-' + i))
+    .filter(Boolean);
   function startLipSync() {
     stopLipSync();
     lipSyncInterval = setInterval(() => {
       mouthBars.forEach((bar, i) => {
-        bar.style.height = ((i === 2 ? 8 : 4) + Math.random() * (i === 2 ? 6 : 4)) + 'px';
+        bar.style.height =
+          (i === 2 ? 8 : 4) + Math.random() * (i === 2 ? 6 : 4) + 'px';
       });
     }, 80);
   }
   function stopLipSync() {
-    if (lipSyncInterval) { clearInterval(lipSyncInterval); lipSyncInterval = null; }
-    [3, 4, 5, 4, 3].forEach((h, i) => { if (mouthBars[i]) mouthBars[i].style.height = h + 'px'; });
+    if (lipSyncInterval) {
+      clearInterval(lipSyncInterval);
+      lipSyncInterval = null;
+    }
+    [3, 4, 5, 4, 3].forEach((h, i) => {
+      if (mouthBars[i]) mouthBars[i].style.height = h + 'px';
+    });
   }
 
   // Emotion system
@@ -916,14 +1080,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function reactToEmotion(text) {
     const l = text.toLowerCase();
-    if (/great job|well done|excellent|perfect|fantastic|awesome|well said/i.test(l)) {
+    if (
+      /great job|well done|excellent|perfect|fantastic|awesome|well said/i.test(
+        l,
+      )
+    ) {
       showEmotion('🌟', 2500);
-      setTimeout(() => { avatarContainer.classList.add('happy'); setTimeout(() => avatarContainer.classList.remove('happy'), 2000); }, 500);
+      setTimeout(() => {
+        avatarContainer.classList.add('happy');
+        setTimeout(() => avatarContainer.classList.remove('happy'), 2000);
+      }, 500);
     } else if (/instead of|should be|not quite|correction/i.test(l)) {
       showEmotion('✏️', 2000);
     } else if (/welcome|hello|hey|hi there/i.test(l)) {
       showEmotion('👋', 2500);
-      setTimeout(() => { avatarContainer.classList.add('happy'); setTimeout(() => avatarContainer.classList.remove('happy'), 2000); }, 300);
+      setTimeout(() => {
+        avatarContainer.classList.add('happy');
+        setTimeout(() => avatarContainer.classList.remove('happy'), 2000);
+      }, 300);
     }
   }
 
@@ -931,12 +1105,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // 5. SPEECH RECOGNITION (STT) + Pronunciation
   // ============================================
   async function startWhisperRecording() {
-    if (!window.EchoFeatures?.Whisper || whisperRecording || ended || turn !== 'user') return;
+    if (
+      !window.EchoFeatures?.Whisper ||
+      whisperRecording ||
+      ended ||
+      turn !== 'user'
+    )
+      return;
     if (whisperServerAvailable === false) {
       showToast('Whisper server unavailable. Check API keys.', 'error');
       return;
     }
-    const stream = await window.EchoFeatures.Whisper.start(getSttLanguageCode());
+    const stream =
+      await window.EchoFeatures.Whisper.start(getSttLanguageCode());
     if (!stream) {
       showToast('Microphone unavailable', 'error');
       return;
@@ -962,7 +1143,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const result = await window.EchoFeatures.Whisper.transcribe(blob, getSttLanguageCode());
+    const result = await window.EchoFeatures.Whisper.transcribe(
+      blob,
+      getSttLanguageCode(),
+    );
     if (!result?.ok) {
       setAvatarState('idle');
       showToast(result?.error || 'Whisper transcription failed', 'error');
@@ -1008,8 +1192,10 @@ document.addEventListener('DOMContentLoaded', () => {
       setAvatarState('listening');
       micBtn.classList.add('active');
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ audio: true })
-          .then(stream => connectMicToWaveform(stream)).catch(() => {});
+        navigator.mediaDevices
+          .getUserMedia({ audio: true })
+          .then((stream) => connectMicToWaveform(stream))
+          .catch(() => {});
       }
     };
 
@@ -1073,7 +1259,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function formatMessage(text) {
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
-    text = text.replace(/`(.*?)`/g, '<code style="background:rgba(99,179,237,0.15);padding:1px 5px;border-radius:4px;font-size:0.85em;">$1</code>');
+    text = text.replace(
+      /`(.*?)`/g,
+      '<code style="background:rgba(99,179,237,0.15);padding:1px 5px;border-radius:4px;font-size:0.85em;">$1</code>',
+    );
     text = text.replace(/\n/g, '<br>');
     return text;
   }
@@ -1092,7 +1281,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   messagesDiv.addEventListener('scroll', () => {
-    userScrolledUp = (messagesDiv.scrollHeight - messagesDiv.scrollTop - messagesDiv.clientHeight) > 60;
+    userScrolledUp =
+      messagesDiv.scrollHeight -
+        messagesDiv.scrollTop -
+        messagesDiv.clientHeight >
+      60;
   });
 
   // ============================================
@@ -1107,7 +1300,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ history, level: selectedLevel, topic: selectedTopic, language: selectedLanguage, scenario: selectedScenario }),
+        body: JSON.stringify({
+          history,
+          level: selectedLevel,
+          topic: selectedTopic,
+          language: selectedLanguage,
+          scenario: selectedScenario,
+        }),
       });
 
       if (!res.ok) {
@@ -1173,7 +1372,6 @@ document.addEventListener('DOMContentLoaded', () => {
         turn = 'user';
         if (autoListen && !ended) setTimeout(() => openMic(), 300);
       }
-
     } catch (error) {
       if (typingEl.parentNode) typingEl.remove();
       addMessageToDOM(error.message || 'Connection error', 'ai-error');
@@ -1218,14 +1416,25 @@ document.addEventListener('DOMContentLoaded', () => {
     speechSessionId += 1;
     const sessionId = speechSessionId;
 
-    if (!('speechSynthesis' in window) || isMuted) { stopLipSync(); finishSpeaking(sessionId); return; }
+    if (!('speechSynthesis' in window) || isMuted) {
+      stopLipSync();
+      finishSpeaking(sessionId);
+      return;
+    }
     window.speechSynthesis.cancel();
     setAvatarState('speaking');
     startLipSync();
     const clean = cleanTextForSpeech(text);
-    if (!clean) { stopLipSync(); finishSpeaking(sessionId); return; }
+    if (!clean) {
+      stopLipSync();
+      finishSpeaking(sessionId);
+      return;
+    }
 
-    if (clean.length > 200) { speakChunked(clean, sessionId); return; }
+    if (clean.length > 200) {
+      speakChunked(clean, sessionId);
+      return;
+    }
 
     const utter = new SpeechSynthesisUtterance(clean);
     applyVoiceProfileToUtterance(utter);
@@ -1247,9 +1456,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let idx = 0;
     function next() {
       if (sessionId !== speechSessionId) return;
-      if (idx >= sentences.length) { stopLipSync(); finishSpeaking(sessionId); return; }
+      if (idx >= sentences.length) {
+        stopLipSync();
+        finishSpeaking(sessionId);
+        return;
+      }
       const s = sentences[idx].trim();
-      if (!s) { idx++; next(); return; }
+      if (!s) {
+        idx++;
+        next();
+        return;
+      }
       const u = new SpeechSynthesisUtterance(s);
       applyVoiceProfileToUtterance(u);
       u.onend = () => {
@@ -1298,13 +1515,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (!recognition || recognizing || ended || turn !== 'user') return;
     try {
-      if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+      if (audioContext && audioContext.state === 'suspended')
+        audioContext.resume();
       recognition.start();
     } catch (e) {}
   }
   function closeMic() {
     if (useWhisperFallback) return;
-    if (recognition && recognizing) try { recognition.abort(); } catch (e) {}
+    if (recognition && recognizing)
+      try {
+        recognition.abort();
+      } catch (e) {}
   }
 
   micBtn.addEventListener('click', () => {
@@ -1317,7 +1538,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (recognizing) { closeMic(); return; }
+    if (recognizing) {
+      closeMic();
+      return;
+    }
     if (turn !== 'user' || ended) return;
     openMic();
   });
@@ -1327,7 +1551,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
   sendBtn.addEventListener('click', () => sendText());
   textInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendText();
+    }
   });
 
   function sendText() {
@@ -1352,11 +1579,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const svg = document.getElementById('mute-svg');
     if (isMuted) {
       speechSessionId += 1;
-      svg.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
-      window.speechSynthesis.cancel(); stopLipSync();
+      svg.innerHTML =
+        '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
+      window.speechSynthesis.cancel();
+      stopLipSync();
       showToast('TTS muted', '');
     } else {
-      svg.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>';
+      svg.innerHTML =
+        '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>';
       showToast('TTS unmuted', 'success');
     }
   });
@@ -1373,12 +1603,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sessionTimer) clearInterval(sessionTimer);
     setAvatarState('idle');
     turn = 'done';
-    addMessageToDOM('Session ended. Great practice! Refresh to start a new conversation.', 'ai');
+    addMessageToDOM(
+      'Session ended. Great practice! Refresh to start a new conversation.',
+      'ai',
+    );
     showSessionSummary();
   });
 
   // Summary modal controls
-  $('summary-close')?.addEventListener('click', () => $('summary-modal')?.classList.add('hidden'));
+  $('summary-close')?.addEventListener('click', () =>
+    $('summary-modal')?.classList.add('hidden'),
+  );
   $('summary-restart')?.addEventListener('click', () => {
     $('summary-modal')?.classList.add('hidden');
     sessionStorage.removeItem('echo_history');
@@ -1402,9 +1637,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Tab switching
-  document.querySelectorAll('.panel-tab').forEach(tab => {
+  document.querySelectorAll('.panel-tab').forEach((tab) => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+      document
+        .querySelectorAll('.panel-tab')
+        .forEach((t) => t.classList.remove('active'));
       tab.classList.add('active');
       const target = tab.dataset.tab;
       $('panel-grammar').classList.toggle('hidden', target !== 'grammar');
@@ -1436,7 +1673,7 @@ document.addEventListener('DOMContentLoaded', () => {
       lang: getLanguageVoiceCode(),
     };
 
-    const index = voiceProfiles.findIndex(v => v.id === payload.id);
+    const index = voiceProfiles.findIndex((v) => v.id === payload.id);
     if (index >= 0) voiceProfiles[index] = payload;
     else voiceProfiles.push(payload);
 
@@ -1457,7 +1694,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    voiceProfiles = voiceProfiles.filter(v => v.id !== targetId);
+    voiceProfiles = voiceProfiles.filter((v) => v.id !== targetId);
     activeVoiceProfileId = voiceProfiles[0].id;
     editingVoiceProfileId = activeVoiceProfileId;
     saveVoiceProfiles();
@@ -1467,9 +1704,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Vocab mode switching
-  document.querySelectorAll('.vocab-mode-btn').forEach(btn => {
+  document.querySelectorAll('.vocab-mode-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.vocab-mode-btn').forEach(b => b.classList.remove('active'));
+      document
+        .querySelectorAll('.vocab-mode-btn')
+        .forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       const mode = btn.dataset.mode;
       $('vocab-list').classList.toggle('hidden', mode !== 'list');
@@ -1481,7 +1720,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Flashcard controls
-  $('flashcard')?.addEventListener('click', () => $('flashcard')?.classList.toggle('flipped'));
+  $('flashcard')?.addEventListener('click', () =>
+    $('flashcard')?.classList.toggle('flipped'),
+  );
   $('fc-prev')?.addEventListener('click', () => showFlashcard(fcIndex - 1));
   $('fc-next')?.addEventListener('click', () => showFlashcard(fcIndex + 1));
   $('quiz-next')?.addEventListener('click', () => startQuiz());
@@ -1490,7 +1731,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // 13. KEYBOARD SHORTCUTS
   // ============================================
   document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 'm') { e.preventDefault(); micBtn.click(); }
+    if (e.ctrlKey && e.key === 'm') {
+      e.preventDefault();
+      micBtn.click();
+    }
     if (e.key === 'Escape' && !ended) endBtn.click();
   });
 
@@ -1512,7 +1756,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
   function saveHistory() {
     try {
-      sessionStorage.setItem('echo_history', JSON.stringify(conversationHistory));
+      sessionStorage.setItem(
+        'echo_history',
+        JSON.stringify(conversationHistory),
+      );
       sessionStorage.setItem('echo_level', selectedLevel);
       sessionStorage.setItem('echo_topic', selectedTopic);
       sessionStorage.setItem('echo_language', selectedLanguage);
@@ -1529,9 +1776,10 @@ document.addEventListener('DOMContentLoaded', () => {
           conversationHistory = parsed;
           selectedLevel = sessionStorage.getItem('echo_level') || selectedLevel;
           selectedTopic = sessionStorage.getItem('echo_topic') || selectedTopic;
-          selectedLanguage = sessionStorage.getItem('echo_language') || selectedLanguage;
+          selectedLanguage =
+            sessionStorage.getItem('echo_language') || selectedLanguage;
           selectedScenario = sessionStorage.getItem('echo_scenario') || null;
-          conversationHistory.forEach(msg => {
+          conversationHistory.forEach((msg) => {
             addMessageToDOM(msg.content, msg.role === 'user' ? 'user' : 'ai');
           });
           onboardingScreen.classList.add('hidden');
@@ -1567,7 +1815,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if ('speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = () => {
-      renderVoiceSelect($('voice-select')?.value || getActiveVoiceProfile()?.voiceName || '');
+      renderVoiceSelect(
+        $('voice-select')?.value || getActiveVoiceProfile()?.voiceName || '',
+      );
     };
   }
 
