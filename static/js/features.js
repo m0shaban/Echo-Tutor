@@ -349,9 +349,36 @@ window.EchoFeatures = (function() {
       form.append('language', lang || 'en');
       try {
         const res = await fetch('/transcribe', { method: 'POST', body: form });
-        if (!res.ok) return null;
-        return await res.json();
-      } catch(e) { return null; }
+        let payload = null;
+        try {
+          payload = await res.json();
+        } catch (e) {}
+
+        if (!res.ok) {
+          return {
+            ok: false,
+            error: payload?.error || `Transcription request failed (${res.status})`,
+          };
+        }
+
+        if (!payload?.text) {
+          return {
+            ok: false,
+            error: payload?.error || 'No transcript returned from Whisper',
+          };
+        }
+
+        return {
+          ok: true,
+          text: payload.text,
+          language: payload.language || lang || 'en',
+        };
+      } catch(e) {
+        return {
+          ok: false,
+          error: 'Could not reach transcription service',
+        };
+      }
     }
   };
 

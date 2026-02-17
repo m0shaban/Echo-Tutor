@@ -820,6 +820,14 @@ body {
 }
 .ctrl-btn:active { transform: scale(0.95); }
 
+.stt-btn {
+  min-width: 52px;
+  padding: 0 6px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
 /* Mic Button */
 .mic-btn.active {
   background: rgba(72, 187, 120, 0.15);
@@ -1397,6 +1405,61 @@ body {
   margin-top: 10px;
 }
 .quiz-next { margin-top: 12px; }
+
+/* Voice Profiles */
+.voice-profiles-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.voice-profile-chip {
+  border: 1px solid var(--border-glass);
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.voice-profile-chip.active {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+  background: var(--bg-glass-hover);
+}
+.voice-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.voice-input,
+.voice-select {
+  width: 100%;
+  border: 1px solid var(--border-glass);
+  background: var(--bg-glass);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+}
+.voice-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.voice-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.voice-actions .btn-primary,
+.voice-actions .btn-secondary {
+  width: auto;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+}
 
 /* Utility */
 .hidden { display: none !important; }

@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const textInput = $('text-input');
   const sendBtn = $('send-btn');
   const micBtn = $('mic-btn');
+  const sttBtn = $('stt-btn');
   const muteBtn = $('mute-btn');
   const endBtn = $('end-btn');
   const avatarContainer = $('avatar-container');
@@ -38,8 +39,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedMode = 'topic'; // 'topic' or 'scenario'
   let recognizing = false;
   let recognition = null;
+  let browserSpeechAvailable = false;
   let whisperRecording = false;
   let useWhisperFallback = false;
+  let sttMode = localStorage.getItem('echo_stt_mode') || 'auto';
+  let whisperServerAvailable = null;
+  let speechSessionId = 0;
   let autoListen = true;
   let isMuted = false;
   let ended = false;
@@ -54,6 +59,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let micStream = null;
   let lipSyncInterval = null;
   let allBadges = [];
+  let voiceProfiles = [];
+  let activeVoiceProfileId = null;
+  let editingVoiceProfileId = null;
 
   // Expose level for exercises
   window._echoLevel = selectedLevel;
@@ -69,6 +77,163 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: 'work', label: 'Work & Career', icon: '💼' },
     { id: 'daily', label: 'Daily Life', icon: '🏠' },
   ];
+
+  function getLanguageVoiceCode() {
+    return selectedLanguage === 'fr' ? 'fr-FR' :
+      selectedLanguage === 'es' ? 'es-ES' :
+      selectedLanguage === 'de' ? 'de-DE' : 'en-US';
+  }
+
+  function getSttLanguageCode() {
+    return selectedLanguage === 'fr' ? 'fr' :
+      selectedLanguage === 'es' ? 'es' :
+      selectedLanguage === 'de' ? 'de' : 'en';
+  }
+
+  function getVoices() {
+    if (!('speechSynthesis' in window)) return [];
+    return window.speechSynthesis.getVoices() || [];
+  }
+
+  function saveVoiceProfiles() {
+    try {
+      localStorage.setItem('echo_voice_profiles', JSON.stringify(voiceProfiles));
+      localStorage.setItem('echo_active_voice_profile', activeVoiceProfileId || '');
+    } catch (e) {}
+  }
+
+  function getDefaultVoiceProfiles() {
+    const lang = getLanguageVoiceCode();
+    return [
+      { id: 'coach', name: 'Coach', voiceName: '', rate: 0.95, pitch: 1.0, volume: 1, lang },
+      { id: 'friendly', name: 'Friendly', voiceName: '', rate: 1.0, pitch: 1.1, volume: 1, lang },
+      { id: 'formal', name: 'Formal', voiceName: '', rate: 0.9, pitch: 0.95, volume: 1, lang },
+    ];
+  }
+
+  function ensureVoiceProfilesLoaded() {
+    if (voiceProfiles.length) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem('echo_voice_profiles') || '[]');
+      if (Array.isArray(saved) && saved.length) {
+        voiceProfiles = saved;
+      } else {
+        voiceProfiles = getDefaultVoiceProfiles();
+      }
+    } catch (e) {
+      voiceProfiles = getDefaultVoiceProfiles();
+    }
+    activeVoiceProfileId = localStorage.getItem('echo_active_voice_profile') || voiceProfiles[0]?.id || null;
+    if (!voiceProfiles.find(p => p.id === activeVoiceProfileId)) {
+      activeVoiceProfileId = voiceProfiles[0]?.id || null;
+    }
+    editingVoiceProfileId = activeVoiceProfileId;
+  }
+
+  function getActiveVoiceProfile() {
+    ensureVoiceProfilesLoaded();
+    return voiceProfiles.find(p => p.id === activeVoiceProfileId) || voiceProfiles[0] || null;
+  }
+
+  function renderVoiceSelect(selectedVoiceName = '') {
+    const select = $('voice-select');
+    if (!select) return;
+    const voices = getVoices();
+    select.innerHTML = '<option value="">Auto voice</option>';
+    voices.forEach(v => {
+      const option = document.createElement('option');
+      option.value = v.name;
+      option.textContent = `${v.name} (${v.lang})`;
+      select.appendChild(option);
+    });
+    select.value = selectedVoiceName || '';
+  }
+
+  function loadVoiceEditor(profile) {
+    const p = profile || getActiveVoiceProfile();
+    if (!p) return;
+    $('voice-profile-name').value = p.name || '';
+    $('voice-rate').value = String(p.rate ?? 0.95);
+    $('voice-pitch').value = String(p.pitch ?? 1.05);
+    $('voice-volume').value = String(p.volume ?? 1);
+    renderVoiceSelect(p.voiceName || '');
+  }
+
+  function renderVoiceProfiles() {
+    const container = $('voice-profiles-list');
+    if (!container) return;
+    container.innerHTML = '';
+    voiceProfiles.forEach(profile => {
+      const chip = document.createElement('button');
+      chip.className = 'voice-profile-chip' + (profile.id === activeVoiceProfileId ? ' active' : '');
+      chip.textContent = profile.name;
+      chip.addEventListener('click', () => {
+        activeVoiceProfileId = profile.id;
+        editingVoiceProfileId = profile.id;
+        saveVoiceProfiles();
+        renderVoiceProfiles();
+        loadVoiceEditor(profile);
+      });
+      container.appendChild(chip);
+    });
+  }
+
+  function canUseWhisperClient() {
+    return Boolean(window.EchoFeatures?.Whisper && window.MediaRecorder && navigator.mediaDevices?.getUserMedia);
+  }
+
+  async function refreshWhisperAvailability() {
+    try {
+      const res = await fetch('/health');
+      if (!res.ok) return;
+      const data = await res.json();
+      whisperServerAvailable = Boolean(data.whisper_available);
+    } catch (e) {}
+  }
+
+  function updateSttButton() {
+    if (!sttBtn) return;
+    const labels = { auto: 'AUTO', whisper: 'WHSP', browser: 'BROW' };
+    sttBtn.textContent = labels[sttMode] || 'AUTO';
+  }
+
+  function setSttMode(mode) {
+    sttMode = mode;
+    try { localStorage.setItem('echo_stt_mode', sttMode); } catch (e) {}
+
+    if (sttMode === 'whisper') {
+      useWhisperFallback = true;
+      autoListen = false;
+    } else if (sttMode === 'browser') {
+      useWhisperFallback = false;
+      autoListen = true;
+    } else {
+      useWhisperFallback = !browserSpeechAvailable && canUseWhisperClient();
+      autoListen = !useWhisperFallback;
+    }
+
+    updateSttButton();
+  }
+
+  function applyVoiceProfileToUtterance(utterance) {
+    const profile = getActiveVoiceProfile();
+    const fallbackLang = getLanguageVoiceCode();
+
+    utterance.lang = profile?.lang || fallbackLang;
+    utterance.rate = profile?.rate ?? 0.95;
+    utterance.pitch = profile?.pitch ?? 1.05;
+    utterance.volume = profile?.volume ?? 1;
+
+    const voices = getVoices();
+    let selectedVoice = null;
+    if (profile?.voiceName) {
+      selectedVoice = voices.find(v => v.name === profile.voiceName) || null;
+    }
+    if (!selectedVoice) {
+      selectedVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith((utterance.lang || fallbackLang).toLowerCase().split('-')[0])) || null;
+    }
+    if (selectedVoice) utterance.voice = selectedVoice;
+  }
 
   // ============================================
   // A. PRONUNCIATION SCORING
@@ -687,14 +852,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
   // 5. SPEECH RECOGNITION (STT) + Pronunciation
   // ============================================
-  function getSttLanguageCode() {
-    return selectedLanguage === 'fr' ? 'fr' :
-      selectedLanguage === 'es' ? 'es' :
-      selectedLanguage === 'de' ? 'de' : 'en';
-  }
-
   async function startWhisperRecording() {
     if (!window.EchoFeatures?.Whisper || whisperRecording || ended || turn !== 'user') return;
+    if (whisperServerAvailable === false) {
+      showToast('Whisper server unavailable. Check API keys.', 'error');
+      return;
+    }
     const stream = await window.EchoFeatures.Whisper.start(getSttLanguageCode());
     if (!stream) {
       showToast('Microphone unavailable', 'error');
@@ -722,6 +885,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const result = await window.EchoFeatures.Whisper.transcribe(blob, getSttLanguageCode());
+    if (!result?.ok) {
+      setAvatarState('idle');
+      showToast(result?.error || 'Whisper transcription failed', 'error');
+      return;
+    }
     const transcript = result?.text?.trim();
     if (!transcript) {
       setAvatarState('idle');
@@ -735,9 +903,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    browserSpeechAvailable = true;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
-    recognition.lang = selectedLanguage === 'en' ? 'en-US' : selectedLanguage === 'fr' ? 'fr-FR' : selectedLanguage === 'es' ? 'es-ES' : selectedLanguage === 'de' ? 'de-DE' : 'en-US';
+    recognition.lang = getLanguageVoiceCode();
     recognition.interimResults = false;
     recognition.continuous = false;
 
@@ -782,15 +951,26 @@ document.addEventListener('DOMContentLoaded', () => {
       if (turn === 'user') setAvatarState('idle');
     };
   } else {
-    if (window.EchoFeatures?.Whisper && window.MediaRecorder && navigator.mediaDevices?.getUserMedia) {
-      useWhisperFallback = true;
-      autoListen = false;
-      showToast('Using Whisper voice mode', 'success');
-    } else {
-      micBtn.disabled = true;
-      showToast('Speech recognition not supported', 'error');
-    }
+    browserSpeechAvailable = false;
   }
+
+  setSttMode(sttMode);
+  refreshWhisperAvailability();
+
+  sttBtn?.addEventListener('click', () => {
+    const order = ['auto', 'whisper', 'browser'];
+    const idx = order.indexOf(sttMode);
+    const nextMode = order[(idx + 1) % order.length];
+    setSttMode(nextMode);
+
+    if (nextMode === 'whisper' && !canUseWhisperClient()) {
+      showToast('Whisper unsupported in this browser', 'error');
+    } else if (nextMode === 'browser' && !browserSpeechAvailable) {
+      showToast('Browser STT unavailable', 'error');
+    } else {
+      showToast(`STT mode: ${nextMode}`, 'success');
+    }
+  });
 
   // ============================================
   // 6. CORE MESSAGING
@@ -950,43 +1130,60 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function speak(text) {
-    if (!('speechSynthesis' in window) || isMuted) { stopLipSync(); finishSpeaking(); return; }
+    speechSessionId += 1;
+    const sessionId = speechSessionId;
+
+    if (!('speechSynthesis' in window) || isMuted) { stopLipSync(); finishSpeaking(sessionId); return; }
     window.speechSynthesis.cancel();
     setAvatarState('speaking');
     startLipSync();
     const clean = cleanTextForSpeech(text);
-    if (!clean) { stopLipSync(); finishSpeaking(); return; }
+    if (!clean) { stopLipSync(); finishSpeaking(sessionId); return; }
 
-    if (clean.length > 200) { speakChunked(clean); return; }
+    if (clean.length > 200) { speakChunked(clean, sessionId); return; }
 
     const utter = new SpeechSynthesisUtterance(clean);
-    utter.lang = /[\u0600-\u06FF]/.test(clean) ? 'ar-SA' : 'en-US';
-    utter.rate = 0.95; utter.pitch = 1.05;
-    const voices = window.speechSynthesis.getVoices();
-    const pref = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural')));
-    if (pref) utter.voice = pref;
-    utter.onend = () => { stopLipSync(); finishSpeaking(); };
-    utter.onerror = () => { stopLipSync(); finishSpeaking(); };
+    applyVoiceProfileToUtterance(utter);
+    utter.onend = () => {
+      if (sessionId !== speechSessionId) return;
+      stopLipSync();
+      finishSpeaking(sessionId);
+    };
+    utter.onerror = () => {
+      if (sessionId !== speechSessionId) return;
+      stopLipSync();
+      finishSpeaking(sessionId);
+    };
     window.speechSynthesis.speak(utter);
   }
 
-  function speakChunked(text) {
+  function speakChunked(text, sessionId) {
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
     let idx = 0;
     function next() {
-      if (idx >= sentences.length) { stopLipSync(); finishSpeaking(); return; }
+      if (sessionId !== speechSessionId) return;
+      if (idx >= sentences.length) { stopLipSync(); finishSpeaking(sessionId); return; }
       const s = sentences[idx].trim();
       if (!s) { idx++; next(); return; }
       const u = new SpeechSynthesisUtterance(s);
-      u.lang = 'en-US'; u.rate = 0.95; u.pitch = 1.05;
-      u.onend = () => { idx++; next(); };
-      u.onerror = () => { idx++; next(); };
+      applyVoiceProfileToUtterance(u);
+      u.onend = () => {
+        if (sessionId !== speechSessionId) return;
+        idx++;
+        next();
+      };
+      u.onerror = () => {
+        if (sessionId !== speechSessionId) return;
+        idx++;
+        next();
+      };
       window.speechSynthesis.speak(u);
     }
     next();
   }
 
-  function finishSpeaking() {
+  function finishSpeaking(sessionId = speechSessionId) {
+    if (sessionId !== speechSessionId) return;
     stopLipSync();
     setAvatarState('idle');
     turn = 'user';
@@ -998,6 +1195,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
   function openMic() {
     if (useWhisperFallback) {
+      if (!canUseWhisperClient()) {
+        if (browserSpeechAvailable) {
+          setSttMode('browser');
+        } else {
+          showToast('Whisper unsupported in this browser', 'error');
+          return;
+        }
+      }
+      startWhisperRecording();
+      return;
+    }
+    if (!recognition && canUseWhisperClient()) {
+      setSttMode('whisper');
       startWhisperRecording();
       return;
     }
@@ -1056,6 +1266,7 @@ document.addEventListener('DOMContentLoaded', () => {
     muteBtn.classList.toggle('muted', isMuted);
     const svg = document.getElementById('mute-svg');
     if (isMuted) {
+      speechSessionId += 1;
       svg.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
       window.speechSynthesis.cancel(); stopLipSync();
       showToast('TTS muted', '');
@@ -1071,6 +1282,7 @@ document.addEventListener('DOMContentLoaded', () => {
   endBtn.addEventListener('click', () => {
     ended = true;
     closeMic();
+    speechSessionId += 1;
     window.speechSynthesis.cancel();
     stopLipSync();
     if (sessionTimer) clearInterval(sessionTimer);
@@ -1112,7 +1324,60 @@ document.addEventListener('DOMContentLoaded', () => {
       const target = tab.dataset.tab;
       $('panel-grammar').classList.toggle('hidden', target !== 'grammar');
       $('panel-vocab').classList.toggle('hidden', target !== 'vocab');
+      $('panel-voices').classList.toggle('hidden', target !== 'voices');
     });
+  });
+
+  // Voice profiles controls
+  $('voice-new')?.addEventListener('click', () => {
+    editingVoiceProfileId = null;
+    $('voice-profile-name').value = '';
+    $('voice-rate').value = '0.95';
+    $('voice-pitch').value = '1.05';
+    $('voice-volume').value = '1';
+    renderVoiceSelect('');
+  });
+
+  $('voice-save')?.addEventListener('click', () => {
+    const name = ($('voice-profile-name').value || '').trim() || 'Custom Voice';
+    const payload = {
+      id: editingVoiceProfileId || `voice_${Date.now()}`,
+      name,
+      voiceName: $('voice-select').value || '',
+      rate: parseFloat($('voice-rate').value || '0.95'),
+      pitch: parseFloat($('voice-pitch').value || '1.05'),
+      volume: parseFloat($('voice-volume').value || '1'),
+      lang: getLanguageVoiceCode(),
+    };
+
+    const index = voiceProfiles.findIndex(v => v.id === payload.id);
+    if (index >= 0) voiceProfiles[index] = payload;
+    else voiceProfiles.push(payload);
+
+    activeVoiceProfileId = payload.id;
+    editingVoiceProfileId = payload.id;
+    saveVoiceProfiles();
+    renderVoiceProfiles();
+    loadVoiceEditor(payload);
+    showToast('Voice profile saved', 'success');
+  });
+
+  $('voice-delete')?.addEventListener('click', () => {
+    const targetId = editingVoiceProfileId || activeVoiceProfileId;
+    if (!targetId) return;
+
+    if (voiceProfiles.length <= 1) {
+      showToast('At least one voice profile is required', 'error');
+      return;
+    }
+
+    voiceProfiles = voiceProfiles.filter(v => v.id !== targetId);
+    activeVoiceProfileId = voiceProfiles[0].id;
+    editingVoiceProfileId = activeVoiceProfileId;
+    saveVoiceProfiles();
+    renderVoiceProfiles();
+    loadVoiceEditor(getActiveVoiceProfile());
+    showToast('Voice profile deleted', 'success');
   });
 
   // Vocab mode switching
@@ -1150,10 +1415,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function showToast(msg, type = '') {
     if (!toastEl) return;
     toastEl.textContent = msg;
-    toastEl.className = 'toast' + (type ? ' toast-' + type : '');
-    toastEl.classList.add('show');
+    toastEl.className = 'toast' + (type ? ' ' + type : '');
+    toastEl.classList.add('visible');
     if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => toastEl.classList.remove('show'), 3000);
+    toastTimeout = setTimeout(() => toastEl.classList.remove('visible'), 3000);
   }
 
   // ============================================
@@ -1203,11 +1468,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
   initParticles();
   initWaveform();
+  ensureVoiceProfilesLoaded();
+  renderVoiceProfiles();
+  loadVoiceEditor(getActiveVoiceProfile());
+  updateSttButton();
   loadVocab();
   renderVocabList();
 
   if ('speechSynthesis' in window) {
-    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => {
+      renderVoiceSelect($('voice-select')?.value || getActiveVoiceProfile()?.voiceName || '');
+    };
   }
 
   if (!loadHistory()) setAvatarState('idle');

@@ -212,6 +212,7 @@
         <svg class="mic-svg" id="mic-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
         <div class="mic-pulse" id="mic-pulse"></div>
       </button>
+      <button class="ctrl-btn stt-btn" id="stt-btn" title="Speech-to-Text mode">AUTO</button>
       <button class="ctrl-btn mute-btn" id="mute-btn" title="Mute/Unmute TTS">
         <svg id="mute-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M23 9l-6 6M17 9l6 6"/></svg>
       </button>
@@ -310,6 +311,7 @@
       <div class="panel-tabs">
         <button class="panel-tab active" data-tab="grammar" id="tab-grammar">Grammar</button>
         <button class="panel-tab" data-tab="vocab" id="tab-vocab">Vocabulary</button>
+        <button class="panel-tab" data-tab="voices" id="tab-voices">Voices</button>
       </div>
       <button class="panel-close" id="panel-close">&times;</button>
     </div>
@@ -344,6 +346,31 @@
         <div class="quiz-options" id="quiz-options"></div>
         <div class="quiz-result hidden" id="quiz-result"></div>
         <button class="btn-primary quiz-next hidden" id="quiz-next">Next</button>
+      </div>
+    </div>
+    <div class="panel-body hidden" id="panel-voices">
+      <div class="voice-profiles-list" id="voice-profiles-list"></div>
+
+      <div class="voice-editor">
+        <input class="voice-input" id="voice-profile-name" type="text" placeholder="Profile name" maxlength="30" />
+
+        <label class="voice-label" for="voice-select">Voice</label>
+        <select class="voice-select" id="voice-select"></select>
+
+        <label class="voice-label" for="voice-rate">Rate</label>
+        <input id="voice-rate" type="range" min="0.6" max="1.3" step="0.05" value="0.95" />
+
+        <label class="voice-label" for="voice-pitch">Pitch</label>
+        <input id="voice-pitch" type="range" min="0.7" max="1.4" step="0.05" value="1.05" />
+
+        <label class="voice-label" for="voice-volume">Volume</label>
+        <input id="voice-volume" type="range" min="0" max="1" step="0.05" value="1" />
+
+        <div class="voice-actions">
+          <button class="btn-secondary" id="voice-new">New</button>
+          <button class="btn-secondary" id="voice-delete">Delete</button>
+          <button class="btn-primary" id="voice-save">Save</button>
+        </div>
       </div>
     </div>
   </div>

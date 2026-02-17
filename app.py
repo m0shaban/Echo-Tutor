@@ -151,13 +151,18 @@ def index():
 @app.route("/health")
 def health():
     uptime = int(time.time() - START_TIME)
+    whisper_sdk_available = GROQ_AVAILABLE
+    whisper_keys_configured = bool(Config.GROQ_API_KEYS)
+    whisper_available = whisper_sdk_available and whisper_keys_configured
     return jsonify({
         "status": "ok",
         "uptime_seconds": uptime,
         "provider": Config.AI_PROVIDER,
         "model": Config.MODEL_NAME,
         "ai_available": get_client() is not None,
-        "whisper_available": GROQ_AVAILABLE and bool(Config.GROQ_API_KEYS),
+        "whisper_available": whisper_available,
+        "whisper_sdk_available": whisper_sdk_available,
+        "whisper_keys_configured": whisper_keys_configured,
     }), 200
 
 
