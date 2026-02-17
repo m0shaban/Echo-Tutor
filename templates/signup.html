@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign Up — Echo Tutor</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <canvas id="particles-canvas"></canvas>
+    <div class="toast" id="toast"></div>
+
+    <div class="onboarding-screen">
+      <div class="onboarding-content auth-standalone">
+        <h1 class="onboarding-title">Create <span class="accent">Account</span></h1>
+        <p class="onboarding-subtitle">Step 1: registration</p>
+
+        <div class="auth-panel auth-page-panel">
+          <input class="voice-input" id="auth-signup-name" type="text" placeholder="Full name" autocomplete="name" />
+          <input class="voice-input" id="auth-signup-email" type="email" placeholder="Email" autocomplete="email" />
+          <input class="voice-input" id="auth-signup-phone" type="text" placeholder="Phone (optional)" autocomplete="tel" />
+          <input class="voice-input" id="auth-signup-password" type="password" placeholder="Password" autocomplete="new-password" />
+          <div class="auth-actions">
+            <button class="btn-primary" id="auth-signup-submit">Create account</button>
+          </div>
+        </div>
+
+        <p class="auth-switch-line">
+          Already have account?
+          <a href="/login" class="accent">Login</a>
+        </p>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/auth-pages.js') }}"></script>
+  </body>
+</html>

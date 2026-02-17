@@ -9,3 +9,6 @@ venv/
 .cache/
 Thumbs.db
 .DS_Store
+users.db
+*.db
+auth_module/.jwt_secret

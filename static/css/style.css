@@ -2621,6 +2621,17 @@ body.no-waveform .waveform-canvas {
 .auth-footer {
   margin-top: 10px;
 }
+.auth-standalone {
+  max-width: 460px;
+}
+.auth-page-panel {
+  margin-top: 10px;
+}
+.auth-switch-line {
+  margin-top: 14px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
 
 /* ============================================
    RESPONSIVE ADJUSTMENTS (Phase 3)

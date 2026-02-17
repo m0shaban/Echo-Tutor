@@ -960,7 +960,9 @@ document.addEventListener('DOMContentLoaded', () => {
   startBtn.addEventListener('click', () => {
     if (!currentUser) {
       showToast('Please login first', 'error');
-      $('auth-modal')?.classList.remove('hidden');
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 300);
       return;
     }
     onboardingScreen.classList.add('hidden');
@@ -1812,7 +1814,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function bindAuthUI() {
     authBtn?.addEventListener('click', () => {
-      $('auth-modal')?.classList.remove('hidden');
+      window.location.href = '/login';
     });
 
     $('auth-close')?.addEventListener('click', () => {

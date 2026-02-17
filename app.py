@@ -175,6 +175,21 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/login")
+def login_page():
+    return render_template("login.html")
+
+
+@app.route("/signup")
+def signup_page():
+    return render_template("signup.html")
+
+
+@app.route("/verify")
+def verify_page():
+    return render_template("verify.html")
+
+
 @app.route("/health")
 def health():
     uptime = int(time.time() - START_TIME)
