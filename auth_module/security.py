@@ -5,7 +5,7 @@ Standalone version — no external dependencies except pyjwt + passlib.
 """
 
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 import jwt
 from passlib.context import CryptContext
 import os
@@ -68,7 +68,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def verify_password_and_update(
     plain_password: str, hashed_password: str
-) -> tuple[bool, str | None]:
+) -> Tuple[bool, Optional[str]]:
     """Verify password and optionally return an upgraded hash."""
     try:
         ok, new_hash = pwd_context.verify_and_update(plain_password, hashed_password)
