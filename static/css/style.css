@@ -978,7 +978,7 @@ body {
   body { overflow-y: auto; }
 }
 
-@media (max-height: 720px) {
+@media (max-height: 720px) and (max-width: 900px) {
   .app-header { padding: 10px 0 8px; }
   .avatar-section { padding: 6px 0 4px; }
   .avatar-container { width: 112px; height: 112px; }
@@ -992,6 +992,12 @@ body {
   .controls-bar { padding: 8px 0 14px; }
   .ctrl-btn { width: 42px; height: 42px; }
   .chat-input { padding: 10px 16px; }
+}
+
+@media (min-width: 1024px) {
+  .app-container { max-width: 720px; padding: 0 24px; }
+  .onboarding-content { max-width: 760px; }
+  .topic-grid, .scenario-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 @media (min-width: 521px) and (max-width: 768px) {

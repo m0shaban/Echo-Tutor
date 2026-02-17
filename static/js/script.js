@@ -38,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedMode = 'topic'; // 'topic' or 'scenario'
   let recognizing = false;
   let recognition = null;
+  let whisperRecording = false;
+  let useWhisperFallback = false;
   let autoListen = true;
   let isMuted = false;
   let ended = false;
@@ -685,6 +687,53 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
   // 5. SPEECH RECOGNITION (STT) + Pronunciation
   // ============================================
+  function getSttLanguageCode() {
+    return selectedLanguage === 'fr' ? 'fr' :
+      selectedLanguage === 'es' ? 'es' :
+      selectedLanguage === 'de' ? 'de' : 'en';
+  }
+
+  async function startWhisperRecording() {
+    if (!window.EchoFeatures?.Whisper || whisperRecording || ended || turn !== 'user') return;
+    const stream = await window.EchoFeatures.Whisper.start(getSttLanguageCode());
+    if (!stream) {
+      showToast('Microphone unavailable', 'error');
+      return;
+    }
+    whisperRecording = true;
+    recognizing = true;
+    micBtn.classList.add('active');
+    setAvatarState('listening');
+    connectMicToWaveform(stream);
+  }
+
+  async function stopWhisperRecordingAndSend() {
+    if (!window.EchoFeatures?.Whisper || !whisperRecording) return;
+
+    whisperRecording = false;
+    recognizing = false;
+    micBtn.classList.remove('active');
+    setAvatarState('thinking');
+
+    const blob = await window.EchoFeatures.Whisper.stop();
+    if (!blob) {
+      setAvatarState('idle');
+      return;
+    }
+
+    const result = await window.EchoFeatures.Whisper.transcribe(blob, getSttLanguageCode());
+    const transcript = result?.text?.trim();
+    if (!transcript) {
+      setAvatarState('idle');
+      showToast('No speech detected', 'error');
+      return;
+    }
+
+    addMessage(transcript, 'user');
+    turn = 'ai';
+    fetchStreamingResponse(conversationHistory);
+  }
+
   if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
@@ -733,8 +782,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (turn === 'user') setAvatarState('idle');
     };
   } else {
-    micBtn.disabled = true;
-    showToast('Speech recognition not supported', 'error');
+    if (window.EchoFeatures?.Whisper && window.MediaRecorder && navigator.mediaDevices?.getUserMedia) {
+      useWhisperFallback = true;
+      autoListen = false;
+      showToast('Using Whisper voice mode', 'success');
+    } else {
+      micBtn.disabled = true;
+      showToast('Speech recognition not supported', 'error');
+    }
   }
 
   // ============================================
@@ -759,7 +814,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function formatMessage(text) {
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    text = text.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+    text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
     text = text.replace(/`(.*?)`/g, '<code style="background:rgba(99,179,237,0.15);padding:1px 5px;border-radius:4px;font-size:0.85em;">$1</code>');
     text = text.replace(/\n/g, '<br>');
     return text;
@@ -942,6 +997,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // 9. MIC CONTROLS
   // ============================================
   function openMic() {
+    if (useWhisperFallback) {
+      startWhisperRecording();
+      return;
+    }
     if (!recognition || recognizing || ended || turn !== 'user') return;
     try {
       if (audioContext && audioContext.state === 'suspended') audioContext.resume();
@@ -949,10 +1008,20 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   }
   function closeMic() {
+    if (useWhisperFallback) return;
     if (recognition && recognizing) try { recognition.abort(); } catch (e) {}
   }
 
   micBtn.addEventListener('click', () => {
+    if (useWhisperFallback) {
+      if (whisperRecording) {
+        stopWhisperRecordingAndSend();
+      } else if (turn === 'user' && !ended) {
+        startWhisperRecording();
+      }
+      return;
+    }
+
     if (recognizing) { closeMic(); return; }
     if (turn !== 'user' || ended) return;
     openMic();
