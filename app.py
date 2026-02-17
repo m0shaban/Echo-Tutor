@@ -17,6 +17,11 @@ from openai import OpenAI
 from config import Config
 from flask_cors import CORS
 
+try:
+    from auth_module.flask_auth_routes import auth_blueprint
+except Exception:
+    auth_blueprint = None
+
 # Groq SDK for Whisper
 try:
     from groq import Groq
@@ -33,6 +38,8 @@ logging.basicConfig(
 app = Flask(__name__)
 CORS(app)
 app.config.from_object(Config)
+if auth_blueprint is not None:
+    app.register_blueprint(auth_blueprint, url_prefix="/auth")
 
 START_TIME = time.time()
 

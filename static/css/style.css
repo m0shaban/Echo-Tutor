@@ -2574,6 +2574,55 @@ body.no-waveform .waveform-canvas {
 }
 
 /* ============================================
+   AUTH MODAL
+   ============================================ */
+.auth-card {
+  max-width: 460px;
+}
+.auth-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.auth-tab {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-glass);
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+.auth-tab.active {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+  background: var(--bg-glass-hover);
+}
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.auth-otp-box {
+  margin-top: 8px;
+  border-top: 1px solid var(--border-glass);
+  padding-top: 10px;
+}
+.auth-actions {
+  display: flex;
+  gap: 8px;
+}
+.auth-current {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.auth-footer {
+  margin-top: 10px;
+}
+
+/* ============================================
    RESPONSIVE ADJUSTMENTS (Phase 3)
    ============================================ */
 @media (max-width: 600px) {

@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const waveformCanvas = $('waveform-canvas');
   const toastEl = $('toast');
   const emotionIndicator = $('emotion-indicator');
+  const authBtn = $('auth-btn');
+  const authUserLabel = $('auth-user-label');
 
   // ─── STATE ───
   let conversationHistory = [];
@@ -61,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let voiceProfiles = [];
   let activeVoiceProfileId = null;
   let editingVoiceProfileId = null;
+  let currentUser = null;
   const DEFAULT_APP_SETTINGS = {
     autoListen: true,
     autoSpeak: true,
@@ -955,6 +958,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   startBtn.addEventListener('click', () => {
+    if (!currentUser) {
+      showToast('Please login first', 'error');
+      $('auth-modal')?.classList.remove('hidden');
+      return;
+    }
     onboardingScreen.classList.add('hidden');
     appContainer.classList.remove('hidden');
     window._echoLevel = selectedLevel;
@@ -1752,7 +1760,147 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ============================================
-  // 15. PERSISTENCE
+  // 15. AUTH INTEGRATION
+  // ============================================
+  function setAuthUI(user) {
+    currentUser = user || null;
+    if (authUserLabel) {
+      authUserLabel.textContent = currentUser
+        ? (currentUser.full_name || currentUser.email || 'U').slice(0, 1).toUpperCase()
+        : '👤';
+    }
+
+    const currentEl = $('auth-current');
+    if (currentEl) {
+      currentEl.textContent = currentUser
+        ? `Signed in as ${currentUser.full_name || currentUser.email}`
+        : 'Not signed in';
+    }
+
+    $('auth-logout')?.classList.toggle('hidden', !currentUser);
+  }
+
+  async function authRequest(path, options = {}) {
+    const res = await fetch(path, {
+      credentials: 'include',
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    });
+
+    let payload = null;
+    try {
+      payload = await res.json();
+    } catch (e) {}
+
+    if (!res.ok) {
+      throw new Error(payload?.detail || payload?.error || 'Request failed');
+    }
+    return payload || {};
+  }
+
+  async function refreshCurrentUser() {
+    try {
+      const me = await authRequest('/auth/me', { method: 'GET' });
+      setAuthUI(me || null);
+    } catch (e) {
+      setAuthUI(null);
+    }
+  }
+
+  function bindAuthUI() {
+    authBtn?.addEventListener('click', () => {
+      $('auth-modal')?.classList.remove('hidden');
+    });
+
+    $('auth-close')?.addEventListener('click', () => {
+      $('auth-modal')?.classList.add('hidden');
+    });
+
+    document.querySelectorAll('.auth-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.auth-tab').forEach((t) => t.classList.remove('active'));
+        tab.classList.add('active');
+        const isLogin = tab.dataset.authTab === 'login';
+        $('auth-login-panel')?.classList.toggle('hidden', !isLogin);
+        $('auth-signup-panel')?.classList.toggle('hidden', isLogin);
+      });
+    });
+
+    $('auth-login-submit')?.addEventListener('click', async () => {
+      try {
+        const email = ($('auth-login-email')?.value || '').trim();
+        const password = $('auth-login-password')?.value || '';
+        await authRequest('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        });
+        await refreshCurrentUser();
+        $('auth-modal')?.classList.add('hidden');
+        showToast('Login successful', 'success');
+      } catch (e) {
+        showToast(e.message || 'Login failed', 'error');
+      }
+    });
+
+    $('auth-signup-submit')?.addEventListener('click', async () => {
+      try {
+        const full_name = ($('auth-signup-name')?.value || '').trim();
+        const email = ($('auth-signup-email')?.value || '').trim();
+        const phone = ($('auth-signup-phone')?.value || '').trim();
+        const password = $('auth-signup-password')?.value || '';
+        await authRequest('/auth/signup', {
+          method: 'POST',
+          body: JSON.stringify({ full_name, email, phone, password }),
+        });
+        $('auth-otp-email').value = email;
+        showToast('Account created. Verify with OTP', 'success');
+      } catch (e) {
+        showToast(e.message || 'Signup failed', 'error');
+      }
+    });
+
+    $('auth-otp-request')?.addEventListener('click', async () => {
+      try {
+        const email = ($('auth-otp-email')?.value || '').trim();
+        await authRequest('/auth/request-otp', {
+          method: 'POST',
+          body: JSON.stringify({ email }),
+        });
+        showToast('OTP sent. Check Telegram bot', 'success');
+      } catch (e) {
+        showToast(e.message || 'OTP request failed', 'error');
+      }
+    });
+
+    $('auth-otp-verify')?.addEventListener('click', async () => {
+      try {
+        const email = ($('auth-otp-email')?.value || '').trim();
+        const code = ($('auth-otp-code')?.value || '').trim();
+        await authRequest('/auth/verify-otp', {
+          method: 'POST',
+          body: JSON.stringify({ email, code }),
+        });
+        await refreshCurrentUser();
+        showToast('Account verified', 'success');
+      } catch (e) {
+        showToast(e.message || 'OTP verification failed', 'error');
+      }
+    });
+
+    $('auth-logout')?.addEventListener('click', async () => {
+      try {
+        await authRequest('/auth/logout', { method: 'POST' });
+      } catch (e) {}
+      setAuthUI(null);
+      showToast('Logged out', 'success');
+    });
+  }
+
+  // ============================================
+  // 16. PERSISTENCE
   // ============================================
   function saveHistory() {
     try {
@@ -1812,6 +1960,8 @@ document.addEventListener('DOMContentLoaded', () => {
   updateSttButton();
   loadVocab();
   renderVocabList();
+  bindAuthUI();
+  refreshCurrentUser();
 
   if ('speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = () => {

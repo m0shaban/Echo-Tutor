@@ -172,6 +172,9 @@
             <span class="stat" id="stat-time" title="Session time">⏱ 0:00</span>
             <span class="stat" id="stat-msgs" title="Messages">💬 0</span>
           </div>
+          <button class="icon-btn" id="auth-btn" title="Login / Account">
+            <span id="auth-user-label">👤</span>
+          </button>
           <!-- Theme Toggle -->
           <button class="icon-btn" id="theme-btn" title="Toggle Theme">
             <svg
@@ -510,6 +513,105 @@
           <button class="modal-close" id="badges-close">&times;</button>
         </div>
         <div class="badges-full-grid" id="badges-full-grid"></div>
+      </div>
+    </div>
+
+    <!-- ============ AUTH MODAL ============ -->
+    <div class="modal-overlay hidden" id="auth-modal">
+      <div class="modal-card auth-card">
+        <div class="modal-header">
+          <h2>Account</h2>
+          <button class="modal-close" id="auth-close">&times;</button>
+        </div>
+
+        <div class="auth-tabs" id="auth-tabs">
+          <button class="auth-tab active" data-auth-tab="login">Login</button>
+          <button class="auth-tab" data-auth-tab="signup">Sign Up</button>
+        </div>
+
+        <div class="auth-panel" id="auth-login-panel">
+          <input
+            class="voice-input"
+            id="auth-login-email"
+            type="email"
+            placeholder="Email"
+            autocomplete="email"
+          />
+          <input
+            class="voice-input"
+            id="auth-login-password"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+          />
+          <div class="auth-actions">
+            <button class="btn-primary" id="auth-login-submit">Login</button>
+          </div>
+        </div>
+
+        <div class="auth-panel hidden" id="auth-signup-panel">
+          <input
+            class="voice-input"
+            id="auth-signup-name"
+            type="text"
+            placeholder="Full name"
+            autocomplete="name"
+          />
+          <input
+            class="voice-input"
+            id="auth-signup-email"
+            type="email"
+            placeholder="Email"
+            autocomplete="email"
+          />
+          <input
+            class="voice-input"
+            id="auth-signup-phone"
+            type="text"
+            placeholder="Phone (optional)"
+            autocomplete="tel"
+          />
+          <input
+            class="voice-input"
+            id="auth-signup-password"
+            type="password"
+            placeholder="Password"
+            autocomplete="new-password"
+          />
+          <div class="auth-actions">
+            <button class="btn-primary" id="auth-signup-submit">Create account</button>
+          </div>
+
+          <div class="auth-otp-box">
+            <label class="voice-label" for="auth-otp-email">OTP verification</label>
+            <input
+              class="voice-input"
+              id="auth-otp-email"
+              type="email"
+              placeholder="Email for OTP"
+              autocomplete="email"
+            />
+            <div class="auth-actions">
+              <button class="btn-secondary" id="auth-otp-request">Request OTP</button>
+            </div>
+            <input
+              class="voice-input"
+              id="auth-otp-code"
+              type="text"
+              placeholder="6-digit code"
+              maxlength="6"
+              inputmode="numeric"
+            />
+            <div class="auth-actions">
+              <button class="btn-primary" id="auth-otp-verify">Verify OTP</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="auth-current" id="auth-current"></div>
+        <div class="auth-actions auth-footer">
+          <button class="btn-secondary" id="auth-logout">Logout</button>
+        </div>
       </div>
     </div>
 
