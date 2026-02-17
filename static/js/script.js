@@ -62,6 +62,15 @@ document.addEventListener('DOMContentLoaded', () => {
   let voiceProfiles = [];
   let activeVoiceProfileId = null;
   let editingVoiceProfileId = null;
+  const DEFAULT_APP_SETTINGS = {
+    autoListen: true,
+    autoSpeak: true,
+    particles: true,
+    animations: true,
+    waveform: true,
+    compactUI: false,
+  };
+  let appSettings = { ...DEFAULT_APP_SETTINGS };
 
   // Expose level for exercises
   window._echoLevel = selectedLevel;
@@ -206,10 +215,10 @@ document.addEventListener('DOMContentLoaded', () => {
       autoListen = false;
     } else if (sttMode === 'browser') {
       useWhisperFallback = false;
-      autoListen = true;
+      autoListen = Boolean(appSettings.autoListen);
     } else {
       useWhisperFallback = !browserSpeechAvailable && canUseWhisperClient();
-      autoListen = !useWhisperFallback;
+      autoListen = Boolean(appSettings.autoListen) && !useWhisperFallback;
     }
 
     updateSttButton();
@@ -233,6 +242,69 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith((utterance.lang || fallbackLang).toLowerCase().split('-')[0])) || null;
     }
     if (selectedVoice) utterance.voice = selectedVoice;
+  }
+
+  function loadAppSettings() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('echo_app_settings') || '{}');
+      appSettings = { ...DEFAULT_APP_SETTINGS, ...(saved || {}) };
+    } catch (e) {
+      appSettings = { ...DEFAULT_APP_SETTINGS };
+    }
+  }
+
+  function saveAppSettings() {
+    try {
+      localStorage.setItem('echo_app_settings', JSON.stringify(appSettings));
+    } catch (e) {}
+  }
+
+  function renderAppSettingsControls() {
+    const map = {
+      'setting-auto-listen': 'autoListen',
+      'setting-auto-speak': 'autoSpeak',
+      'setting-particles': 'particles',
+      'setting-animations': 'animations',
+      'setting-waveform': 'waveform',
+      'setting-compact': 'compactUI',
+    };
+    Object.entries(map).forEach(([id, key]) => {
+      const input = $(id);
+      if (!input) return;
+      input.checked = Boolean(appSettings[key]);
+    });
+  }
+
+  function applyAppSettings() {
+    document.body.classList.toggle('ui-compact', Boolean(appSettings.compactUI));
+    document.body.classList.toggle('ui-reduced-motion', !appSettings.animations);
+    document.body.classList.toggle('no-particles', !appSettings.particles);
+    document.body.classList.toggle('no-waveform', !appSettings.waveform);
+
+    if (particlesCanvas) particlesCanvas.style.display = appSettings.particles ? '' : 'none';
+    if (waveformCanvas) waveformCanvas.style.display = appSettings.waveform ? '' : 'none';
+
+    setSttMode(sttMode);
+  }
+
+  function bindAppSettingsControls() {
+    const map = {
+      'setting-auto-listen': 'autoListen',
+      'setting-auto-speak': 'autoSpeak',
+      'setting-particles': 'particles',
+      'setting-animations': 'animations',
+      'setting-waveform': 'waveform',
+      'setting-compact': 'compactUI',
+    };
+    Object.entries(map).forEach(([id, key]) => {
+      const input = $(id);
+      if (!input) return;
+      input.addEventListener('change', () => {
+        appSettings[key] = Boolean(input.checked);
+        saveAppSettings();
+        applyAppSettings();
+      });
+    });
   }
 
   // ============================================
@@ -599,6 +671,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function animateParticles() {
     if (!pCtx) return;
     const w = particlesCanvas.width, h = particlesCanvas.height;
+    if (!appSettings.particles) {
+      pCtx.clearRect(0, 0, w, h);
+      requestAnimationFrame(animateParticles);
+      return;
+    }
     pCtx.clearRect(0, 0, w, h);
     particles.forEach(p => {
       p.x += p.vx; p.y += p.vy;
@@ -646,7 +723,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function drawWaveform() {
-    if (!analyser || !recognizing) return;
+    if (!analyser || !recognizing || !appSettings.waveform) return;
     const ctx = waveformCanvas.getContext('2d');
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
@@ -711,6 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.lang-card').forEach(card => {
     card.addEventListener('click', () => {
       selectedLanguage = card.dataset.lang;
+      if (recognition) recognition.lang = getLanguageVoiceCode();
       document.querySelectorAll('.lang-card').forEach(c => c.classList.remove('active'));
       card.classList.add('active');
     });
@@ -1086,8 +1164,15 @@ document.addEventListener('DOMContentLoaded', () => {
       // XP tracking
       if (window.EchoFeatures) window.EchoFeatures.XP.trackMessage();
 
-      turn = 'ai-speaking';
-      speak(fullText);
+      if (appSettings.autoSpeak && !isMuted) {
+        turn = 'ai-speaking';
+        speak(fullText);
+      } else {
+        stopLipSync();
+        setAvatarState('idle');
+        turn = 'user';
+        if (autoListen && !ended) setTimeout(() => openMic(), 300);
+      }
 
     } catch (error) {
       if (typingEl.parentNode) typingEl.remove();
@@ -1325,6 +1410,7 @@ document.addEventListener('DOMContentLoaded', () => {
       $('panel-grammar').classList.toggle('hidden', target !== 'grammar');
       $('panel-vocab').classList.toggle('hidden', target !== 'vocab');
       $('panel-voices').classList.toggle('hidden', target !== 'voices');
+      $('panel-settings').classList.toggle('hidden', target !== 'settings');
     });
   });
 
@@ -1468,6 +1554,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
   initParticles();
   initWaveform();
+  loadAppSettings();
+  bindAppSettingsControls();
+  renderAppSettingsControls();
+  applyAppSettings();
   ensureVoiceProfilesLoaded();
   renderVoiceProfiles();
   loadVoiceEditor(getActiveVoiceProfile());

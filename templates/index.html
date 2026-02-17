@@ -312,6 +312,7 @@
         <button class="panel-tab active" data-tab="grammar" id="tab-grammar">Grammar</button>
         <button class="panel-tab" data-tab="vocab" id="tab-vocab">Vocabulary</button>
         <button class="panel-tab" data-tab="voices" id="tab-voices">Voices</button>
+        <button class="panel-tab" data-tab="settings" id="tab-settings">Settings</button>
       </div>
       <button class="panel-close" id="panel-close">&times;</button>
     </div>
@@ -371,6 +372,61 @@
           <button class="btn-secondary" id="voice-delete">Delete</button>
           <button class="btn-primary" id="voice-save">Save</button>
         </div>
+      </div>
+    </div>
+    <div class="panel-body hidden" id="panel-settings">
+      <div class="settings-group">
+        <h4 class="settings-title">Conversation</h4>
+        <label class="setting-item">
+          <div class="setting-copy">
+            <span class="setting-name">Auto listen</span>
+            <span class="setting-desc">Mic starts automatically after AI response</span>
+          </div>
+          <input type="checkbox" id="setting-auto-listen" checked />
+        </label>
+        <label class="setting-item">
+          <div class="setting-copy">
+            <span class="setting-name">Auto speak</span>
+            <span class="setting-desc">AI replies are read aloud</span>
+          </div>
+          <input type="checkbox" id="setting-auto-speak" checked />
+        </label>
+      </div>
+
+      <div class="settings-group">
+        <h4 class="settings-title">Visuals</h4>
+        <label class="setting-item">
+          <div class="setting-copy">
+            <span class="setting-name">Animated background</span>
+            <span class="setting-desc">Show moving particles behind app</span>
+          </div>
+          <input type="checkbox" id="setting-particles" checked />
+        </label>
+        <label class="setting-item">
+          <div class="setting-copy">
+            <span class="setting-name">Avatar motion</span>
+            <span class="setting-desc">Enable motion effects and transitions</span>
+          </div>
+          <input type="checkbox" id="setting-animations" checked />
+        </label>
+        <label class="setting-item">
+          <div class="setting-copy">
+            <span class="setting-name">Waveform while listening</span>
+            <span class="setting-desc">Show audio activity bars during mic input</span>
+          </div>
+          <input type="checkbox" id="setting-waveform" checked />
+        </label>
+      </div>
+
+      <div class="settings-group">
+        <h4 class="settings-title">Layout</h4>
+        <label class="setting-item">
+          <div class="setting-copy">
+            <span class="setting-name">Compact mode</span>
+            <span class="setting-desc">Denser chat layout for more content</span>
+          </div>
+          <input type="checkbox" id="setting-compact" />
+        </label>
       </div>
     </div>
   </div>
