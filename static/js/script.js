@@ -64,6 +64,16 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeVoiceProfileId = null;
   let editingVoiceProfileId = null;
   let currentUser = null;
+  const GUEST_TRIAL_MAX_USER_MESSAGES = 4;
+  const GUEST_TRIAL_MAX_SECONDS = 180;
+  const guestQueryEnabled =
+    new URLSearchParams(window.location.search).get('guest') === '1';
+  let isGuestTrial =
+    guestQueryEnabled || sessionStorage.getItem('echo_guest_trial') === '1';
+  let guestUserMessages = 0;
+  if (guestQueryEnabled) {
+    sessionStorage.setItem('echo_guest_trial', '1');
+  }
   const DEFAULT_APP_SETTINGS = {
     autoListen: true,
     autoSpeak: true,
@@ -958,12 +968,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   startBtn.addEventListener('click', () => {
-    if (!currentUser) {
+    if (!currentUser && !isGuestTrial) {
       showToast('Please login first', 'error');
       setTimeout(() => {
         window.location.href = '/login';
       }, 300);
       return;
+    }
+    if (!currentUser && isGuestTrial) {
+      showToast(
+        'Guest mode: 4 messages or 3 minutes, then signup is required.',
+        '',
+      );
     }
     onboardingScreen.classList.add('hidden');
     appContainer.classList.remove('hidden');
@@ -976,6 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function startSession() {
     sessionStart = Date.now();
     msgCount = 0;
+    guestUserMessages = 0;
     conversationHistory = [];
     ended = false;
     turn = 'user';
@@ -1169,6 +1186,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    if (enforceGuestTrialLimit()) {
+      setAvatarState('idle');
+      return;
+    }
+
     addMessage(transcript, 'user');
     turn = 'ai';
     fetchStreamingResponse(conversationHistory);
@@ -1184,6 +1206,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     recognition.onresult = (event) => {
       if (turn === 'user') {
+        if (enforceGuestTrialLimit()) return;
         const result = event.results[0][0];
         const transcript = result.transcript;
         const confidence = result.confidence; // 0-1
@@ -1261,9 +1284,39 @@ document.addEventListener('DOMContentLoaded', () => {
   function addMessage(text, role) {
     addMessageToDOM(text, role === 'user' ? 'user' : 'ai');
     conversationHistory.push({ role, content: text });
+    if (role === 'user') guestUserMessages++;
     msgCount++;
     updateStats();
     saveHistory();
+  }
+
+  function isGuestTrialExpired() {
+    if (!isGuestTrial || currentUser) return false;
+    const elapsedSeconds = sessionStart
+      ? Math.floor((Date.now() - sessionStart) / 1000)
+      : 0;
+    return (
+      guestUserMessages >= GUEST_TRIAL_MAX_USER_MESSAGES ||
+      elapsedSeconds >= GUEST_TRIAL_MAX_SECONDS
+    );
+  }
+
+  function enforceGuestTrialLimit() {
+    if (!isGuestTrialExpired()) return false;
+    ended = true;
+    turn = 'done';
+    closeMic();
+    speechSessionId += 1;
+    window.speechSynthesis.cancel();
+    stopLipSync();
+    if (sessionTimer) clearInterval(sessionTimer);
+    setAvatarState('idle');
+    addMessageToDOM(
+      'Guest trial ended. Please create an account from /signup or login from /login to continue.',
+      'ai',
+    );
+    showToast('Guest trial ended — please sign up to continue.', 'error');
+    return true;
   }
 
   function formatMessage(text) {
@@ -1568,6 +1621,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function sendText() {
+    if (enforceGuestTrialLimit()) return;
     const text = textInput.value.trim();
     if (!text || turn !== 'user' || ended) return;
     textInput.value = '';
@@ -1766,9 +1820,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
   function setAuthUI(user) {
     currentUser = user || null;
+    if (currentUser) {
+      isGuestTrial = false;
+      sessionStorage.removeItem('echo_guest_trial');
+    }
     if (authUserLabel) {
       authUserLabel.textContent = currentUser
-        ? (currentUser.full_name || currentUser.email || 'U').slice(0, 1).toUpperCase()
+        ? (currentUser.full_name || currentUser.email || 'U')
+            .slice(0, 1)
+            .toUpperCase()
         : '👤';
     }
 
@@ -1823,7 +1883,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.auth-tab').forEach((tab) => {
       tab.addEventListener('click', () => {
-        document.querySelectorAll('.auth-tab').forEach((t) => t.classList.remove('active'));
+        document
+          .querySelectorAll('.auth-tab')
+          .forEach((t) => t.classList.remove('active'));
         tab.classList.add('active');
         const isLogin = tab.dataset.authTab === 'login';
         $('auth-login-panel')?.classList.toggle('hidden', !isLogin);

@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         showToast('Login successful', 'success');
         setTimeout(() => {
-          window.location.href = '/';
+          window.location.href = '/app';
         }, 300);
       } catch (e) {
         showToast(e.message || 'Login failed', 'error');

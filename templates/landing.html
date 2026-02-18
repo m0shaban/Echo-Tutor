@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Echo Tutor — Welcome</title>
+    <meta
+      name="description"
+      content="Welcome to Echo Tutor. Practice with AI, then sign up and verify via Telegram for your account."
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="onboarding-screen">
+      <div class="onboarding-content auth-standalone">
+        <h1 class="onboarding-title">ECHO <span class="accent">TUTOR</span></h1>
+        <p class="onboarding-subtitle">Practice languages with an AI tutor.</p>
+
+        <div class="auth-panel auth-page-panel">
+          <p class="selection-label" style="margin-bottom: 16px">
+            Start as guest, or create your account and verify it via
+            @robovainova_bot.
+          </p>
+          <div
+            class="auth-actions"
+            style="display: flex; gap: 10px; flex-wrap: wrap"
+          >
+            <a
+              href="/app?guest=1"
+              class="btn-secondary"
+              style="text-decoration: none"
+              >Try as Guest</a
+            >
+            <a href="/login" class="btn-secondary" style="text-decoration: none"
+              >Login</a
+            >
+            <a href="/signup" class="btn-primary" style="text-decoration: none"
+              >Create Account</a
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/features.js') }}"></script>
+  </body>
+</html>
