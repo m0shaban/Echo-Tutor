@@ -17,6 +17,30 @@
       rel="stylesheet"
     />
     <style>
+                  /* --- FINAL FIX: Always push hero-visual below navbar on mobile --- */
+                  @media (max-width: 900px) {
+                    .landing-nav {
+                      position: relative;
+                      z-index: 200;
+                    }
+                    .hero {
+                      padding-top: 140px;
+                    }
+                    .hero-visual {
+                      margin-top: 36px !important;
+                      min-height: 180px;
+                      z-index: 100;
+                    }
+                  }
+                  @media (max-width: 600px) {
+                    .hero {
+                      padding-top: 120px;
+                    }
+                    .hero-visual {
+                      margin-top: 48px !important;
+                      min-height: 160px;
+                    }
+                  }
               @media (max-width: 900px) {
                 .hero {
                   padding-top: 120px;
