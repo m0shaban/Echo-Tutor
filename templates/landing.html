@@ -17,87 +17,96 @@
       rel="stylesheet"
     />
     <style>
-                  /* --- FINAL FIX: Always push hero-visual below navbar on mobile --- */
-                  @media (max-width: 900px) {
-                    .landing-nav {
-                      position: relative;
-                      z-index: 200;
-                    }
-                    .hero {
-                      padding-top: 140px;
-                    }
-                    .hero-visual {
-                      margin-top: 36px !important;
-                      min-height: 180px;
-                      z-index: 100;
-                    }
-                  }
-                  @media (max-width: 600px) {
-                    .hero {
-                      padding-top: 120px;
-                    }
-                    .hero-visual {
-                      margin-top: 48px !important;
-                      min-height: 160px;
-                    }
-                  }
-              @media (max-width: 900px) {
-                .hero {
-                  padding-top: 120px;
-                }
-                .hero-visual {
-                  margin-top: 24px;
-                }
-              }
-              @media (max-width: 600px) {
-                .hero {
-                  padding-top: 90px;
-                }
-                .hero-visual {
-                  margin-top: 32px;
-                }
-              }
-          /* Responsive: Mobile First */
-          @media (max-width: 900px) {
-            .hero {
-              flex-direction: column;
-              align-items: flex-start;
-              padding: 100px 4% 40px 4%;
-              gap: 24px;
-            }
-            .hero-content {
-              max-width: 100%;
-              text-align: left;
-            }
-            .hero-title {
+      /* --- GLOBAL: Header Layering & Layout --- */
+      .landing-nav {
+         /* Ensure header is always on top */
+         z-index: 9999 !important;
+         position: fixed;
+         top: 0;
+         width: 100%;
+      }
+
+      /* --- GLOBAL: Hero Layout Adjustments --- */
+      .hero {
+        /* Increase top padding to prevent header overlap on all screens */
+        padding-top: 160px; 
+        min-height: 100vh;
+        /* Default layout (desktop): Row */
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        gap: 50px; 
+        position: relative; 
+      }
+
+      .hero-visual {
+        /* Ensure character has its own spacing and minimum height */
+        margin-top: 40px; 
+        min-height: 250px;
+        position: relative;
+        z-index: 10; /* Lower than nav */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      /* --- RESPONSIVE: Tablet & Mobile (max-width: 900px) --- */
+      @media (max-width: 900px) {
+        .hero {
+          /* Stack content vertically */
+          flex-direction: column;
+          align-items: center; 
+          padding-top: 180px; 
+          padding-bottom: 60px;
+          gap: 40px;
+          text-align: center;
+        }
+
+        .hero-content {
+          order: 1; 
+          width: 100%;
+          text-align: center; 
+          max-width: 100%;
+        }
+
+        .hero-title {
               font-size: 2.2rem;
               line-height: 1.15;
-            }
-            .hero-subtitle {
+        }
+        .hero-subtitle {
               font-size: 1rem;
-            }
-            .cta-group {
-              flex-direction: column;
-              gap: 12px;
-              width: 100%;
-            }
-            .btn-glow, .btn-outline {
+        }
+
+        .hero-visual {
+          order: 2; 
+          width: 100%;
+          margin-top: 60px !important; 
+          min-height: 300px; 
+          margin-bottom: 40px;
+          justify-content: center;
+        }
+        
+        .hero-visual .avatar-container {
+              transform: scale(1.5);
+        }
+
+        .cta-group {
+             flex-direction: column;
+             gap: 12px;
+             width: 100%;
+             align-items: center; /* Center buttons */
+        }
+        
+        .btn-glow, .btn-outline {
               width: 100%;
               font-size: 1rem;
               padding: 12px 0;
-            }
-            .hero-visual {
-              width: 100%;
-              justify-content: center;
-              margin-bottom: 24px;
-            }
-            .hero-visual .avatar-container {
-              transform: scale(1.5);
-            }
-            .scroll-indicator {
+        }
+        
+        .scroll-indicator {
               bottom: 10px;
-            }
-          }
+        }
+      }
           @media (max-width: 600px) {
             .landing-nav {
               flex-direction: column;
@@ -112,7 +121,8 @@
               gap: 8px;
             }
             .hero {
-              padding: 70px 2% 24px 2%;
+              /* Ensure ample space for stacked header on small screens */
+              padding: 160px 2% 40px 2%; 
             }
             .hero-title {
               font-size: 1.3rem;
@@ -223,7 +233,7 @@
         position: fixed;
         width: 100%;
         top: 0;
-        z-index: 100;
+        z-index: 9999; /* Updated z-index */
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       }
 
@@ -270,7 +280,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 120px 10%;
+        padding: 160px 10% 80px 10%; /* Increased padding-top */
         gap: 50px;
         position: relative;
       }
@@ -403,6 +413,8 @@
         position: relative;
         z-index: 10;
         animation: floatHero 6s ease-in-out infinite;
+        min-height: 250px; /* Added min-height */
+        margin-top: 0; /* Default (desktop): aligned by flex */
       }
 
       @keyframes floatHero {
