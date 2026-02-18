@@ -31,6 +31,10 @@ class AuthSettings(BaseSettings):
     NOVA_API_KEY: str = os.getenv("NOVA_API_KEY", "")   # Shared secret with Nova
     APP_ID: str = os.getenv("APP_ID", "default")        # Your app identifier
 
+    # Auth strategy
+    AUTH_MODE: str = os.getenv("AUTH_MODE", "local")  # local | central
+    AUTH_PROXY_TIMEOUT_SECONDS: int = int(os.getenv("AUTH_PROXY_TIMEOUT_SECONDS", "15"))
+
     class Config:
         env_file = ".env"
         extra = "ignore"

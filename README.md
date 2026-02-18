@@ -1,6 +1,6 @@
 ---
 title: ECHO TUTOR PRO
-emoji: "🗣️"
+emoji: '🗣️'
 colorFrom: blue
 colorTo: indigo
 sdk: docker
@@ -54,6 +54,30 @@ python app.py
 
 Open `http://localhost:7860` in your browser.
 
+## Auth + Nova Integration (Production Runtime)
+
+- Production runtime for `PROJECT_APP` is Flask via `app.py` (not `main.py`).
+- Auth pages are served as standalone routes:
+  - `/signup`
+  - `/verify`
+  - `/login`
+- Auth API is mounted under `/auth` from `auth_module.flask_auth_routes`.
+- Signup/request-otp generates local OTP and pushes it to Nova when configured:
+  - `POST /api/external/push-otp` on Nova
+  - `GET /api/external/check-verified` on Nova
+
+Required env keys for integration:
+
+- `NOVA_API_URL`
+- `NOVA_API_KEY`
+- `APP_ID`
+- `JWT_SECRET_KEY`
+
+To route auth through Nova centrally, set:
+
+- `AUTH_MODE=central`
+- `AUTH_PROXY_TIMEOUT_SECONDS=15`
+
 ## 🐳 Docker
 
 ```bash
@@ -84,13 +108,13 @@ echo-tutor/
 
 ## 🔧 API Endpoints
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/` | GET | Main application page |
-| `/chat` | POST | Non-streaming chat endpoint |
-| `/chat/stream` | POST | SSE streaming chat endpoint |
-| `/topics` | GET | Available topics & difficulty levels |
-| `/health` | GET | Health check with uptime |
+| Endpoint       | Method | Description                          |
+| -------------- | ------ | ------------------------------------ |
+| `/`            | GET    | Main application page                |
+| `/chat`        | POST   | Non-streaming chat endpoint          |
+| `/chat/stream` | POST   | SSE streaming chat endpoint          |
+| `/topics`      | GET    | Available topics & difficulty levels |
+| `/health`      | GET    | Health check with uptime             |
 
 ## 🌐 Deploy on Hugging Face Spaces
 

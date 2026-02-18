@@ -2,11 +2,13 @@ import asyncio
 import os
 import random
 from datetime import datetime, timedelta
+import requests
 
 from flask import Blueprint, jsonify, make_response, request
 
 from .database import auth_db
 from .security import create_access_token, decode_access_token, validate_password_strength
+from .config import auth_settings
 
 
 auth_blueprint = Blueprint("auth_blueprint", __name__)
@@ -48,6 +50,51 @@ def _is_production():
     return bool(os.getenv("RENDER") or os.getenv("ENVIRONMENT", "").lower() == "production")
 
 
+def _use_central_auth():
+    return (auth_settings.AUTH_MODE or "local").strip().lower() == "central"
+
+
+def _proxy_error(message: str):
+    return jsonify({"detail": message}), 503
+
+
+def _proxy_to_nova(method: str, path: str, *, json_body=None, form_body=None, params=None):
+    nova_url = (auth_settings.NOVA_API_URL or "").rstrip("/")
+    if not nova_url:
+        return None, None, _proxy_error("Central auth is enabled but NOVA_API_URL is missing")
+
+    url = f"{nova_url}{path}"
+    headers = {"Accept": "application/json", "X-App-ID": auth_settings.APP_ID}
+
+    auth_header = request.headers.get("Authorization", "").strip()
+    token = _extract_token_from_request()
+    if auth_header:
+        headers["Authorization"] = auth_header
+    elif token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    try:
+        resp = requests.request(
+            method=method.upper(),
+            url=url,
+            json=json_body,
+            data=form_body,
+            params=params,
+            headers=headers,
+            timeout=auth_settings.AUTH_PROXY_TIMEOUT_SECONDS,
+        )
+    except requests.RequestException:
+        return None, None, _proxy_error("تعذر الاتصال بخدمة التوثيق المركزية (Nova)")
+
+    payload = None
+    try:
+        payload = resp.json()
+    except Exception:
+        payload = {"detail": (resp.text or "").strip() or "Nova error"}
+
+    return payload, resp.status_code, None
+
+
 @auth_blueprint.post("/signup")
 def signup():
     data = request.get_json(silent=True) or {}
@@ -55,6 +102,20 @@ def signup():
     password = data.get("password") or ""
     full_name = (data.get("full_name") or "").strip()
     phone = (data.get("phone") or "").strip() or None
+
+    if _use_central_auth():
+        payload, status_code, error = _proxy_to_nova(
+            "POST",
+            "/auth/register",
+            json_body={
+                "email": email,
+                "password": password,
+                "full_name": full_name,
+            },
+        )
+        if error:
+            return error
+        return jsonify(payload), status_code
 
     valid, message = validate_password_strength(password)
     if not valid:
@@ -110,6 +171,31 @@ def login():
     username = username_from_json or username_from_form
     password = password_from_json or password_from_form
 
+    if _use_central_auth():
+        if not username or not password:
+            return jsonify({"detail": "بيانات تسجيل الدخول غير مكتملة"}), 400
+
+        payload, status_code, error = _proxy_to_nova(
+            "POST",
+            "/auth/login",
+            form_body={"username": username, "password": password},
+        )
+        if error:
+            return error
+
+        response = make_response(jsonify(payload), status_code)
+        access_token = (payload or {}).get("access_token")
+        if access_token and status_code == 200:
+            response.set_cookie(
+                key="access_token",
+                value=f"Bearer {access_token}",
+                httponly=True,
+                secure=_is_production(),
+                max_age=86400,
+                samesite="Lax",
+            )
+        return response
+
     if not username or not password:
         return jsonify({"detail": "بيانات تسجيل الدخول غير مكتملة"}), 400
 
@@ -144,6 +230,14 @@ def login():
 
 @auth_blueprint.post("/logout")
 def logout():
+    if _use_central_auth():
+        payload, status_code, error = _proxy_to_nova("POST", "/auth/logout")
+        if error:
+            return error
+        response = make_response(jsonify(payload), status_code)
+        response.delete_cookie("access_token")
+        return response
+
     token = request.cookies.get("access_token", "")
     if token.lower().startswith("bearer "):
         token = token.split(" ", 1)[1].strip()
@@ -158,6 +252,12 @@ def logout():
 
 @auth_blueprint.get("/me")
 def me():
+    if _use_central_auth():
+        payload, status_code, error = _proxy_to_nova("GET", "/auth/me")
+        if error:
+            return error
+        return jsonify(payload), status_code
+
     user, error_response = _get_current_user_or_error()
     if error_response:
         return error_response
@@ -179,6 +279,14 @@ def request_otp():
     email = (data.get("email") or "").strip().lower()
     if not email:
         return jsonify({"detail": "البريد الإلكتروني مطلوب"}), 400
+
+    if _use_central_auth():
+        payload, status_code, error = _proxy_to_nova(
+            "POST", "/auth/request-otp", json_body={"email": email}
+        )
+        if error:
+            return error
+        return jsonify(payload), status_code
 
     user = _run(auth_db.get_user_by_email_unverified(email))
     if not user:
@@ -222,6 +330,28 @@ def verify_otp():
 
     if not email or not code:
         return jsonify({"detail": "email و code مطلوبان"}), 400
+
+    if _use_central_auth():
+        payload, status_code, error = _proxy_to_nova(
+            "POST",
+            "/auth/verify-otp",
+            json_body={"email": email, "code": code},
+        )
+        if error:
+            return error
+
+        response = make_response(jsonify(payload), status_code)
+        access_token = (payload or {}).get("access_token")
+        if access_token and status_code == 200:
+            response.set_cookie(
+                key="access_token",
+                value=f"Bearer {access_token}",
+                httponly=True,
+                secure=_is_production(),
+                max_age=86400,
+                samesite="Lax",
+            )
+        return response
 
     user = _run(auth_db.get_user_by_email_unverified(email))
     if not user:
@@ -271,6 +401,14 @@ def check_verified():
     if not email:
         return jsonify({"detail": "email مطلوب"}), 400
 
+    if _use_central_auth():
+        payload, status_code, error = _proxy_to_nova(
+            "GET", "/auth/check-verified", params={"email": email}
+        )
+        if error:
+            return error
+        return jsonify(payload), status_code
+
     user = _run(auth_db.get_user_by_email_unverified(email))
     if not user:
         return jsonify({"detail": "المستخدم غير موجود"}), 404
@@ -294,6 +432,20 @@ def check_verified():
 
 @auth_blueprint.delete("/delete-account")
 def delete_account():
+    if _use_central_auth():
+        data = request.get_json(silent=True) or {}
+        payload, status_code, error = _proxy_to_nova(
+            "DELETE",
+            "/account",
+            json_body={"confirm": data.get("confirm", "")},
+        )
+        if error:
+            return error
+        response = make_response(jsonify(payload), status_code)
+        if status_code == 200:
+            response.delete_cookie("access_token")
+        return response
+
     user, error_response = _get_current_user_or_error()
     if error_response:
         return error_response
