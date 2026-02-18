@@ -2,9 +2,13 @@
 const CACHE_NAME = 'echo-tutor-cache-v2';
 const urlsToCache = [
   '/',
+  '/landing', // Cache the landing page route if it exists, or just '/' if that's landing
   '/static/css/style.css',
-  '/static/js/script.js',
+  '/static/js/script.js', // Ensure this file exists, or remove if not needed
   '/static/manifest.json',
+  '/static/icons/icon-192.png',
+  '/static/icons/icon-512.png',
+  '/static/icons/Echo.png' // Important branding asset
 ];
 
 self.addEventListener('install', event => {

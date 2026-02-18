@@ -8,6 +8,12 @@
       name="description"
       content="The future of language learning. Real-time AI conversations, instant feedback, and immersive scenarios."
     />
+    <!-- PWA / TWA Integration -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+    <meta name="theme-color" content="#0a0e1a" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}" />
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/Echo.png') }}" />
+    
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='css/style.css') }}"
@@ -1601,6 +1607,15 @@
 
         container.style.transform = `scale(2.8) perspective(1000px) rotateY(${deltaX * 5}deg) rotateX(${-deltaY * 5}deg)`;
       });
+
+      // PWA Service Worker Registration
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register("{{ url_for('static', filename='service-worker.js') }}")
+            .then(reg => console.log('SW registered:', reg))
+            .catch(err => console.log('SW failed:', err));
+        });
+      }
 
       function randomBlink() {
         const eyelids = document.querySelectorAll('.orb-eyelid');
