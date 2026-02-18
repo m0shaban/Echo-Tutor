@@ -27,9 +27,11 @@ class AuthSettings(BaseSettings):
     )
 
     # Centralized Nova Bot (for verification via @robovainova_bot)
-    NOVA_API_URL: str = os.getenv("NOVA_API_URL", "")  # e.g. https://robovai-nova.onrender.com
-    NOVA_API_KEY: str = os.getenv("NOVA_API_KEY", "")   # Shared secret with Nova
-    APP_ID: str = os.getenv("APP_ID", "default")        # Your app identifier
+    NOVA_API_URL: str = os.getenv(
+        "NOVA_API_URL", ""
+    )  # e.g. https://robovai-nova.onrender.com
+    NOVA_API_KEY: str = os.getenv("NOVA_API_KEY", "")  # Shared secret with Nova
+    APP_ID: str = os.getenv("APP_ID", "default")  # Your app identifier
 
     # Auth strategy
     AUTH_MODE: str = os.getenv("AUTH_MODE", "local")  # local | central

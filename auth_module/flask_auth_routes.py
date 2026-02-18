@@ -7,7 +7,11 @@ import requests
 from flask import Blueprint, jsonify, make_response, request
 
 from .database import auth_db
-from .security import create_access_token, decode_access_token, validate_password_strength
+from .security import (
+    create_access_token,
+    decode_access_token,
+    validate_password_strength,
+)
 from .config import auth_settings
 
 
@@ -47,7 +51,9 @@ def _get_current_user_or_error():
 
 
 def _is_production():
-    return bool(os.getenv("RENDER") or os.getenv("ENVIRONMENT", "").lower() == "production")
+    return bool(
+        os.getenv("RENDER") or os.getenv("ENVIRONMENT", "").lower() == "production"
+    )
 
 
 def _use_central_auth():
@@ -58,10 +64,16 @@ def _proxy_error(message: str):
     return jsonify({"detail": message}), 503
 
 
-def _proxy_to_nova(method: str, path: str, *, json_body=None, form_body=None, params=None):
+def _proxy_to_nova(
+    method: str, path: str, *, json_body=None, form_body=None, params=None
+):
     nova_url = (auth_settings.NOVA_API_URL or "").rstrip("/")
     if not nova_url:
-        return None, None, _proxy_error("Central auth is enabled but NOVA_API_URL is missing")
+        return (
+            None,
+            None,
+            _proxy_error("Central auth is enabled but NOVA_API_URL is missing"),
+        )
 
     url = f"{nova_url}{path}"
     headers = {"Accept": "application/json", "X-App-ID": auth_settings.APP_ID}
@@ -204,11 +216,14 @@ def login():
         return jsonify({"detail": "البريد الإلكتروني أو كلمة المرور غير صحيحة"}), 401
 
     if not user.get("is_verified"):
-        return jsonify(
-            {
-                "detail": "الحساب غير مُفعّل. افتح بوت @robovainova_bot في تليجرام وأرسل /verify"
-            }
-        ), 403
+        return (
+            jsonify(
+                {
+                    "detail": "الحساب غير مُفعّل. افتح بوت @robovainova_bot في تليجرام وأرسل /verify"
+                }
+            ),
+            403,
+        )
 
     access_token = create_access_token(data={"sub": user["email"]})
     expires_at = (datetime.now() + timedelta(days=1)).isoformat()
@@ -293,7 +308,9 @@ def request_otp():
         return jsonify({"detail": "لم يتم العثور على حساب بهذا البريد"}), 404
 
     if user.get("is_verified"):
-        return jsonify({"status": "already_verified", "message": "الحساب مفعّل بالفعل ✅"})
+        return jsonify(
+            {"status": "already_verified", "message": "الحساب مفعّل بالفعل ✅"}
+        )
 
     otp_code = str(random.randint(100000, 999999))
     _run(auth_db.store_otp(user["id"], otp_code, "telegram_verify", minutes=10))
@@ -358,7 +375,9 @@ def verify_otp():
         return jsonify({"detail": "المستخدم غير موجود"}), 404
 
     if user.get("is_verified"):
-        return jsonify({"status": "already_verified", "message": "الحساب مفعّل بالفعل ✅"})
+        return jsonify(
+            {"status": "already_verified", "message": "الحساب مفعّل بالفعل ✅"}
+        )
 
     valid = _run(auth_db.verify_otp(user["id"], code, "telegram_verify"))
     if not valid:
