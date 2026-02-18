@@ -15,7 +15,7 @@ from .security import (
 from .config import auth_settings
 
 
-auth_blueprint = Blueprint("auth_blueprint", __name__)
+auth_blueprint = Blueprint("auth", __name__)
 
 
 def _run(coro):

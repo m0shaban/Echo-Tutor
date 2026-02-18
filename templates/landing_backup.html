@@ -1,0 +1,728 @@
+﻿<!doctype html>
+<html lang="en" dir="ltr" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Echo Tutor  Premium AI Language Coach</title>
+    <meta
+      name="description"
+      content="Echo Tutor is a premium AI language coach with real-time conversation, corrections, voice support, and guided practice."
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <style>
+      :root {
+        --direction: ltr;
+        --font-family: 'Inter', -apple-system, sans-serif;
+      }
+      
+      [data-lang="ar"] {
+        --direction: rtl;
+        --font-family: 'Cairo', 'Tajawal', sans-serif;
+      }
+
+      body.landing-body {
+        overflow-y: auto;
+        justify-content: flex-start;
+        align-items: stretch;
+        direction: var(--direction);
+        font-family: var(--font-family);
+      }
+
+      /* Language Toggle */
+      .lang-switch {
+        cursor: pointer;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-glass);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: 0.3s;
+        color: var(--text-primary);
+        font-family: inherit;
+      }
+      .lang-switch:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .lang-icon {
+        font-size: 1.2rem;
+      }
+
+      .landing-root {
+        position: relative;
+        z-index: 2;
+        min-height: 100vh;
+        width: min(1180px, 94vw);
+        margin: 0 auto;
+        padding: 22px 0 48px;
+      }
+
+      .landing-nav {
+        position: sticky;
+        top: 12px;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        background: var(--bg-glass);
+        border: 1px solid var(--border-glass);
+        border-radius: 999px;
+        padding: 10px 14px;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .brand-mark {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        letter-spacing: 1px;
+      }
+
+      .echo-logo-inline {
+        width: 26px;
+        height: 26px;
+        object-fit: contain;
+        border-radius: 8px;
+        filter: drop-shadow(0 0 12px var(--accent-glow));
+      }
+
+      .echo-logo-inline.sm {
+        width: 18px;
+        height: 18px;
+      }
+
+      .echo-logo-inline.lg {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+      }
+
+      .nav-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 26px;
+        align-items: stretch;
+        margin-top: 24px;
+      }
+
+      .hero-panel,
+      .hero-preview,
+      .section-card {
+        background: var(--bg-glass);
+        border: 1px solid var(--border-glass);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-md);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+      }
+
+      .hero-panel {
+        padding: 34px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.82rem;
+        color: var(--accent-bright);
+        border: 1px solid var(--border-glass);
+        border-radius: 999px;
+        padding: 7px 12px;
+        margin-bottom: 14px;
+      }
+
+      .hero-title {
+        font-size: clamp(2rem, 4vw, 3.2rem);
+        line-height: 1.1;
+        letter-spacing: 0.5px;
+        margin-bottom: 12px;
+      }
+
+      .hero-copy {
+        color: var(--text-secondary);
+        max-width: 58ch;
+        line-height: 1.75;
+      }
+
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 22px;
+      }
+
+      .stats-row {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(100px, 1fr));
+        gap: 10px;
+      }
+
+      .stat-chip {
+        border: 1px solid var(--border-glass);
+        border-radius: var(--radius-md);
+        padding: 11px 12px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .stat-value {
+        font-size: 1.02rem;
+        font-weight: 700;
+      }
+
+      .stat-label {
+        color: var(--text-muted);
+        font-size: 0.78rem;
+      }
+
+      .hero-preview {
+        padding: 22px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .echo-character-wrap {
+        position: relative;
+        width: 170px;
+        height: 170px;
+        margin: 0 auto 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: echoFloat 3.6s ease-in-out infinite;
+      }
+
+      .echo-character {
+        width: 104px;
+        height: 104px;
+        object-fit: contain;
+        border-radius: 22px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow:
+          0 0 24px var(--accent-glow),
+          0 0 60px rgba(99, 179, 237, 0.18);
+        background: rgba(10, 14, 26, 0.6);
+        position: relative;
+        z-index: 3;
+      }
+
+      .echo-ring {
+        position: absolute;
+        border-radius: 50%;
+        border: 1px solid;
+        pointer-events: none;
+      }
+
+      .echo-ring-1 {
+        width: 132px;
+        height: 132px;
+        border-color: rgba(99, 179, 237, 0.36);
+        animation: ringSpin 8.5s linear infinite;
+      }
+
+      .echo-ring-2 {
+        width: 162px;
+        height: 162px;
+        border-color: rgba(159, 122, 234, 0.3);
+        animation: ringSpin 11s linear infinite reverse;
+      }
+
+      .echo-pulse {
+        position: absolute;
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(99, 179, 237, 0.22) 0%, transparent 72%);
+        animation: pulseGlow 2.6s ease-in-out infinite;
+        pointer-events: none;
+      }
+
+      .preview-glow {
+        position: absolute;
+        width: 320px;
+        height: 320px;
+        border-radius: 50%;
+        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+        top: -120px;
+        right: -80px;
+        pointer-events: none;
+      }
+
+      .preview-card {
+        position: relative;
+        border: 1px solid var(--border-glass);
+        border-radius: var(--radius-lg);
+        background: rgba(10, 14, 26, 0.55);
+        padding: 14px;
+        margin-bottom: 10px;
+        transform: translateY(0);
+        transition: transform var(--transition-normal), border-color var(--transition-normal);
+      }
+
+      .preview-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--accent);
+      }
+
+      .preview-role {
+        font-size: 0.74rem;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+
+      .preview-text {
+        line-height: 1.6;
+        color: var(--text-secondary);
+        font-size: 0.92rem;
+      }
+
+      .landing-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .section {
+        margin-top: 18px;
+      }
+
+      .section-card {
+        padding: 24px;
+      }
+
+      .section-title {
+        font-size: 1.34rem;
+        margin-bottom: 12px;
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .feature-item {
+        border: 1px solid var(--border-glass);
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.02);
+        padding: 14px;
+      }
+
+      .feature-item h4 {
+        font-size: 0.95rem;
+        margin-bottom: 6px;
+      }
+
+      .feature-item p {
+        color: var(--text-secondary);
+        line-height: 1.6;
+        font-size: 0.88rem;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .step-item {
+        border: 1px solid var(--border-glass);
+        border-radius: var(--radius-md);
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        font-size: 0.82rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        margin-bottom: 8px;
+      }
+
+      .final-cta {
+        text-align: center;
+        padding: 26px;
+      }
+
+      .muted {
+        color: var(--text-muted);
+      }
+
+      .logo-text-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(16px);
+        transition: opacity 0.7s ease, transform 0.7s ease;
+      }
+
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @keyframes echoFloat {
+        0%,
+        100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-8px);
+        }
+      }
+
+      @keyframes ringSpin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes pulseGlow {
+        0%,
+        100% {
+          opacity: 0.45;
+          transform: scale(0.94);
+        }
+        50% {
+          opacity: 0.85;
+          transform: scale(1.02);
+        }
+      }
+      
+      /* Mobile Responsiveness */
+      @media (max-width: 900px) {
+        .hero {
+            grid-template-columns: 1fr;
+            gap: 40px;
+        }
+        .hero-title {
+            font-size: 2.5rem;
+        }
+        .echo-character-wrap {
+            width: 140px;
+            height: 140px;
+        }
+        .echo-character {
+            width: 90px;
+            height: 90px;
+        }
+        .echo-ring-1 { width: 110px; height: 110px; }
+        .echo-ring-2 { width: 140px; height: 140px; }
+        
+        .landing-grid, .feature-grid {
+            grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body class="landing-body">
+    <!-- Particles Background -->
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="landing-root">
+      
+      <div class="landing-nav">
+        <div class="brand-mark">
+          <img src="{{ url_for('static', filename='icons/Echo.png') }}" alt="Echo Logo" class="echo-logo-inline">
+          <span>Echo Tutor</span>
+        </div>
+        <div class="nav-actions">
+           <!-- Language Switcher -->
+          <button class="lang-switch" onclick="toggleLanguage()" title="Switch Language">
+            <span class="lang-icon" id="lang-flag"></span>
+            <span id="lang-text">EN</span>
+          </button>
+          
+          {% if user %}
+            <a href="{{ url_for('index') }}" class="btn btn-sm btn-ghost" data-i18n="dashboard">Dashboard</a>
+            <!-- Logout handled by JS or requires POST -->
+            <button onclick="fetch('/auth/logout', {method:'POST'}).then(()=>window.location.reload())" class="btn btn-sm btn-glass" data-i18n="logout">Log Out</button>
+          {% else %}
+            <a href="{{ url_for('login_page') }}" class="btn btn-sm btn-ghost" data-i18n="login">Log In</a>
+            <a href="{{ url_for('signup_page') }}" class="btn btn-sm btn-primary" data-i18n="get_started">Get Started</a>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="hero">
+        <div class="hero-panel">
+          <div class="hero-kicker">
+            <span class="status-dot"></span>
+            <span data-i18n="new_ai_model">New Gemini 2.0 Flash Model</span>
+          </div>
+          <h1 class="hero-title">
+            <span class="text-gradient" data-i18n="hero_title_1">Master English</span><br />
+            <span data-i18n="hero_title_2">with Echo Tutor</span>
+          </h1>
+          <p class="hero-copy" data-i18n="hero_desc">
+            Experience the future of language learning. Real-time conversation, 
+            instant correction, and personalized feedback powered by advanced AI.
+          </p>
+
+          <div class="cta-row">
+            <a href="{{ url_for('index') }}" class="btn btn-lg btn-primary">
+               <img src="{{ url_for('static', filename='icons/Echo.png') }}" class="echo-logo-inline sm" style="margin-right:8px; filter:none;">
+               <span data-i18n="try_demo">Try Echo Live</span>
+            </a>
+            <a href="#features" class="btn btn-lg btn-glass" data-i18n="explore_features">Explore Features</a>
+          </div>
+          
+          <div class="stats-row">
+            <div class="stat-chip">
+                <div class="stat-value">50+</div>
+                <div class="stat-label" data-i18n="scenarios">Scenarios</div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-value">24/7</div>
+                <div class="stat-label" data-i18n="availability">AI Availability</div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-value">Whisper</div>
+                <div class="stat-label" data-i18n="voice_tech">HD Voice Tech</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-preview">
+          <div class="preview-glow"></div>
+          
+          <!-- Animated Echo Character -->
+          <div class="echo-character-wrap">
+             <div class="echo-pulse"></div>
+             <div class="echo-ring echo-ring-1"></div>
+             <div class="echo-ring echo-ring-2"></div>
+             <img src="{{ url_for('static', filename='icons/Echo.png') }}" alt="Echo AI Character" class="echo-character">
+          </div>
+
+          <div class="preview-card">
+            <div class="preview-role">
+                <span style="color:var(--accent);"></span> <span data-i18n="echo_role">Echo AI Tutor</span>
+            </div>
+            <div class="preview-text">
+              "<span data-i18n="echo_msg">Welcome! I'm Echo, your personal language guide. I can help you practice pronunciation, fix grammar mistakes, and build confidence. Ready to start?</span>"
+            </div>
+             <div style="margin-top:10px; display:flex; gap:5px;">
+                 <!-- Flag Icons for decoration -->
+                 <span style="font-size:1.2rem;"></span>
+                 <span style="font-size:1.2rem;"></span>
+                 <span style="font-size:1.2rem;"></span>
+             </div>
+          </div>
+          
+          <div class="preview-card" style="opacity: 0.7; transform: scale(0.98);">
+            <div class="preview-role"><span style="color:var(--success);"></span> <span data-i18n="you_role">You</span></div>
+             <div class="preview-text" data-i18n="user_msg">I want to improve my business English skills.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" id="features">
+         <div class="landing-grid">
+             <div class="section-card">
+                 <h3 data-i18n="feat_realtime_title">Real-time Voice</h3>
+                 <p style="color:var(--text-secondary); font-size:0.9rem;" data-i18n="feat_realtime_desc">Powered by Groq & Whisper for lightning-fast speech recognition.</p>
+             </div>
+             <div class="section-card">
+                 <h3 data-i18n="feat_feedback_title">Instant Feedback</h3>
+                 <p style="color:var(--text-secondary); font-size:0.9rem;" data-i18n="feat_feedback_desc">Get corrections on grammar and pronunciation as you speak.</p>
+             </div>
+             <div class="section-card">
+                 <h3 data-i18n="feat_scenarios_title">Roleplay Scenarios</h3>
+                 <p style="color:var(--text-secondary); font-size:0.9rem;" data-i18n="feat_scenarios_desc">Practice ordering coffee, job interviews, and more.</p>
+             </div>
+         </div>
+      </div>
+      
+      <footer style="margin-top: 60px; text-align: center; color: var(--text-muted); padding-bottom: 20px;">
+        <p>&copy; 2026 <span style="color:var(--accent);">robovai.tech</span>. All rights reserved.</p>
+      </footer>
+    </div>
+    
+    <!-- Language Script -->
+    <script>
+        const translations = {
+            en: {
+                dashboard: "Dashboard",
+                logout: "Log Out",
+                login: "Log In",
+                get_started: "Get Started",
+                new_ai_model: "New Gemini 2.0 Flash Model",
+                hero_title_1: "Master English",
+                hero_title_2: "with Echo Tutor",
+                hero_desc: "Experience the future of language learning. Real-time voice conversations, instant grammar correction, and personalized feedback powered by advanced AI.",
+                try_demo: "Try Echo Live",
+                explore_features: "Explore Features",
+                scenarios: "Scenarios",
+                availability: "AI Availability",
+                voice_tech: "HD Voice Tech",
+                echo_role: "Echo AI Tutor",
+                echo_msg: "Welcome! Im Echo, your personal language guide. I can help you practice pronunciation, fix grammar mistakes, and build confidence. Ready to start?",
+                you_role: "You",
+                user_msg: "I want to improve my business English skills.",
+                feat_realtime_title: "Real-time Voice",
+                feat_realtime_desc: "Powered by Groq & Whisper for lightning-fast speech recognition.",
+                feat_feedback_title: "Instant Feedback",
+                feat_feedback_desc: "Get corrections on grammar and pronunciation as you speak.",
+                feat_scenarios_title: "Roleplay Scenarios",
+                feat_scenarios_desc: "Practice ordering coffee, job interviews, and more."
+            },
+            ar: {
+                dashboard: "لوحة التحكم",
+                logout: "تسجيل خروج",
+                login: "تسجيل دخول",
+                get_started: "ابدأ الآن",
+                new_ai_model: "مدعوم بنموذج Gemini 2.0 Flash",
+                hero_title_1: "أتقن الإنجليزية",
+                hero_title_2: "مع إيكو توتور",
+                hero_desc: "جرب مستقبل تعلم اللغات. محادثات صوتية فورية، تصحيح فوري للقواعد، وملاحظات مخصصة مدعومة بأحدث تقنيات الذكاء الاصطناعي.",
+                try_demo: "جرب إيكو لايف",
+                explore_features: "اكتشف المزايا",
+                scenarios: "سيناريو تعليمي",
+                availability: "متاح 24/7",
+                voice_tech: "تقنية صوت HD",
+                echo_role: "المعلم إيكو",
+                echo_msg: "أهلاً! أنا إيكو، دليلك الشخصي للغة. أستطيع مساعدتك في تحسين النطق، وتصحيح الأخطاء القواعدية، وبناء ثقتك بنفسك. هل أنت جاهز؟",
+                you_role: "أنت",
+                user_msg: "أريد تحسين مهاراتي في اللغة الإنجليزية للأعمال.",
+                feat_realtime_title: "صوت فوري",
+                feat_realtime_desc: "مدعوم بتقنيات Groq و Whisper لتعرف فائق السرعة على الكلام.",
+                feat_feedback_title: "تغذية راجعة فورية",
+                feat_feedback_desc: "احصل على تصحيحات للقواعد والنطق أثناء تحدثك مباشرة.",
+                feat_scenarios_title: "سيناريوهات تفاعلية",
+                feat_scenarios_desc: "تدرب على طلب القهوة، مقابلات العمل، والمزيد من المواقف الحياتية."
+            }
+        };
+
+        let currentLang = 'en';
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'ar' : 'en';
+            updateContent();
+        }
+        
+        function updateContent() {
+            const elements = document.querySelectorAll('[data-i18n]');
+            elements.forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    el.innerText = translations[currentLang][key];
+                }
+            });
+            
+            // Layout changes
+            document.body.style.direction = currentLang === 'ar' ? 'rtl' : 'ltr';
+            document.documentElement.setAttribute('lang', currentLang);
+            document.documentElement.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
+            
+            // Update switch button
+            const flag = document.getElementById('lang-flag');
+            const txt = document.getElementById('lang-text');
+            
+            if (currentLang === 'ar') {
+                flag.innerText = ''; 
+                txt.innerText = 'AR';
+                document.body.setAttribute('data-lang', 'ar');
+            } else {
+                flag.innerText = '';
+                txt.innerText = 'EN';
+                document.body.removeAttribute('data-lang');
+            }
+        }
+    </script>
+    <script>
+      /* --- Particles Background Logic --- */
+      (function() {
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        
+        function resize() {
+          width = window.innerWidth;
+          height = window.innerHeight;
+          canvas.width = width;
+          canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+        
+        const particles = [];
+        const particleCount = 40;
+        
+        class Particle {
+          constructor() {
+            this.x = Math.random() * width;
+            this.y = Math.random() * height;
+            this.vx = (Math.random() - 0.5) * 0.4;
+            this.vy = (Math.random() - 0.5) * 0.4;
+            this.size = Math.random() * 2 + 1;
+            this.alpha = Math.random() * 0.5 + 0.1;
+          }
+          
+          update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            
+            if (this.x < 0) this.x = width;
+            if (this.x > width) this.x = 0;
+            if (this.y < 0) this.y = height;
+            if (this.y > height) this.y = 0;
+          }
+          
+          draw() {
+            ctx.fillStyle = 
+gba(99, 179, 237, );
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        
+        for (let i=0; i < particleCount; i++) {
+          particles.push(new Particle());
+        }
+        
+        function animate() {
+          ctx.clearRect(0, 0, width, height);
+          particles.forEach(p => {
+            p.update();
+            p.draw();
+          });
+          requestAnimationFrame(animate);
+        }
+        animate();
+      })();
+    </script>
+  </body>
+</html>

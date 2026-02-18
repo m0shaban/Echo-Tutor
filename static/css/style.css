@@ -2639,16 +2639,30 @@ body.no-waveform .waveform-canvas {
 @media (max-width: 600px) {
   .lang-cards {
     gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   .lang-card {
     padding: 10px 12px;
     min-width: 70px;
+    flex: 1 1 calc(33% - 10px);
   }
   .lang-flag {
     font-size: 1.4rem;
   }
   .lang-name {
     font-size: 0.7rem;
+  }
+  .level-cards {
+    flex-wrap: wrap;
+  }
+  .level-card {
+    flex: 1 1 calc(50% - 10px);
+    font-size: 0.8rem;
+    padding: 10px 16px;
+  }
+  .topic-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
   .scenario-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -2659,10 +2673,13 @@ body.no-waveform .waveform-canvas {
   }
   .exercise-types {
     gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   .ex-type-btn {
     padding: 6px 10px;
     font-size: 0.72rem;
+    flex: 1 1 auto;
   }
   .xp-display {
     padding: 3px 6px;
@@ -2685,5 +2702,18 @@ body.no-waveform .waveform-canvas {
   }
   .side-panel:not(.hidden) {
     right: 0;
+  }
+  .onboarding-screen {
+    padding: 80px 16px 40px;
+    align-items: flex-start; /* Allow scrolling from top */
+  }
+  .onboarding-card {
+    margin-bottom: 40px;
+  }
+}
+@media (max-height: 700px) {
+  .onboarding-screen {
+    align-items: flex-start;
+    padding-top: 20px;
   }
 }
