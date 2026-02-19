@@ -442,17 +442,45 @@ window.EchoFeatures = (function () {
     recorder: null,
     chunks: [],
     recording: false,
+    mimeType: 'audio/webm',
+    fileExt: 'webm',
+    pickMimeType() {
+      try {
+        if (!window.MediaRecorder?.isTypeSupported) return '';
+        const candidates = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/mp4',
+          'audio/mpeg',
+        ];
+        for (const mimeType of candidates) {
+          if (window.MediaRecorder.isTypeSupported(mimeType)) {
+            return mimeType;
+          }
+        }
+      } catch (e) {}
+      return '';
+    },
     async start(lang) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
-        this.recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        const mimeType = this.pickMimeType();
+        this.mimeType = mimeType || 'audio/webm';
+        this.fileExt = this.mimeType.includes('mp4')
+          ? 'm4a'
+          : this.mimeType.includes('mpeg')
+            ? 'mp3'
+            : 'webm';
+        this.recorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream);
         this.chunks = [];
         this.recorder.ondataavailable = (e) => {
           if (e.data.size > 0) this.chunks.push(e.data);
         };
-        this.recorder.start();
+        this.recorder.start(250);
         this.recording = true;
         return stream;
       } catch (e) {
@@ -467,7 +495,15 @@ window.EchoFeatures = (function () {
           return;
         }
         this.recorder.onstop = () => {
-          const blob = new Blob(this.chunks, { type: 'audio/webm' });
+          if (!this.chunks.length) {
+            this.recording = false;
+            this.recorder.stream?.getTracks().forEach((t) => t.stop());
+            resolve(null);
+            return;
+          }
+          const blob = new Blob(this.chunks, {
+            type: this.mimeType || this.chunks[0]?.type || 'audio/webm',
+          });
           this.recording = false;
           this.recorder.stream?.getTracks().forEach((t) => t.stop());
           resolve(blob);
@@ -477,10 +513,21 @@ window.EchoFeatures = (function () {
     },
     async transcribe(blob, lang) {
       const form = new FormData();
-      form.append('audio', blob, 'recording.webm');
+      form.append('audio', blob, `recording.${this.fileExt || 'webm'}`);
       form.append('language', lang || 'en');
       try {
-        const res = await fetch('/transcribe', { method: 'POST', body: form });
+        const controller =
+          typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeout = controller
+          ? setTimeout(() => controller.abort(), 45000)
+          : null;
+
+        const res = await fetch('/transcribe', {
+          method: 'POST',
+          body: form,
+          signal: controller?.signal,
+        });
+        if (timeout) clearTimeout(timeout);
         let payload = null;
         try {
           payload = await res.json();
@@ -507,6 +554,12 @@ window.EchoFeatures = (function () {
           language: payload.language || lang || 'en',
         };
       } catch (e) {
+        if (e?.name === 'AbortError') {
+          return {
+            ok: false,
+            error: 'Transcription timed out. Try again.',
+          };
+        }
         return {
           ok: false,
           error: 'Could not reach transcription service',

@@ -12,6 +12,8 @@ from flask import (
     jsonify,
     Response,
     stream_with_context,
+    send_from_directory,
+    make_response,
 )
 from openai import OpenAI
 from config import Config
@@ -170,6 +172,16 @@ def build_system_prompt(
 
 
 # --- Routes ---
+@app.route("/service-worker.js")
+def service_worker():
+    response = make_response(send_from_directory("static", "service-worker.js"))
+    response.headers["Content-Type"] = "application/javascript"
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
 @app.route("/")
 def index():
     return render_template("landing.html")
@@ -355,7 +367,13 @@ def chat_stream():
             yield "data: [DONE]\n\n"
 
         return Response(
-            stream_with_context(welcome_gen()), content_type="text/event-stream"
+            stream_with_context(welcome_gen()),
+            content_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
         )
 
     level_config = Config.DIFFICULTY_LEVELS.get(
@@ -388,7 +406,15 @@ def chat_stream():
             logging.error(f"Streaming error: {e}", exc_info=True)
             yield f"data: {json.dumps({'error': 'Connection interrupted. Please try again.'})}\n\n"
 
-    return Response(stream_with_context(generate()), content_type="text/event-stream")
+    return Response(
+        stream_with_context(generate()),
+        content_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # ─── Exercises Endpoints ───

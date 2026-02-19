@@ -43,13 +43,52 @@ document.addEventListener('DOMContentLoaded', () => {
   let browserSpeechAvailable = false;
   let whisperRecording = false;
   let useWhisperFallback = false;
-  let sttMode = localStorage.getItem('echo_stt_mode') || 'auto';
+  const savedSttMode = localStorage.getItem('echo_stt_mode');
+  let sttMode = savedSttMode || 'auto';
   let whisperServerAvailable = null;
   let speechSessionId = 0;
   let autoListen = true;
   let isMuted = false;
   let ended = false;
   let turn = 'user';
+
+  // Mobile detection
+  const isMobile =
+    /Android|iPhone|iPad|iPod|Mobile|webOS/i.test(navigator.userAgent) ||
+    ('ontouchstart' in window && window.innerWidth < 1024);
+  const mobileWhisperOnly = isMobile;
+
+  // On first run on mobile, prefer Whisper (Groq) over browser STT.
+  // Keep user preference untouched if already saved.
+  if (!savedSttMode && isMobile) {
+    sttMode = 'whisper';
+  }
+  if (mobileWhisperOnly) {
+    sttMode = 'whisper';
+  }
+
+  // iOS Safari doesn't support SpeechSynthesis reliably — skip TTS entirely
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  // Safety: unlock turn much faster on mobile (12s), 25s on desktop
+  let turnStuckTimer = null;
+  function resetTurnStuckTimer() {
+    if (turnStuckTimer) clearTimeout(turnStuckTimer);
+    if (turn === 'user' || turn === 'done') return;
+    const stuckMs = isMobile ? 12000 : 25000;
+    turnStuckTimer = setTimeout(() => {
+      if (turn !== 'user' && turn !== 'done' && !ended) {
+        console.warn('[Echo] turn stuck at', turn, '— forcing unlock');
+        try {
+          window.speechSynthesis?.cancel();
+        } catch (e) {}
+        stopLipSync();
+        turn = 'user';
+        setAvatarState('idle');
+        showToast('Ready — tap to chat', '');
+      }
+    }, stuckMs);
+  }
   let sessionStart = null;
   let sessionTimer = null;
   let msgCount = 0;
@@ -82,6 +121,13 @@ document.addEventListener('DOMContentLoaded', () => {
     waveform: true,
     compactUI: false,
   };
+
+  // Disable autoSpeak & autoListen only on iOS by default (gesture restrictions)
+  if (isIOS) {
+    DEFAULT_APP_SETTINGS.autoSpeak = false;
+    DEFAULT_APP_SETTINGS.autoListen = false;
+  }
+
   let appSettings = { ...DEFAULT_APP_SETTINGS };
 
   // Expose level for exercises
@@ -272,6 +318,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setSttMode(mode) {
+    if (mobileWhisperOnly && mode !== 'whisper') {
+      mode = 'whisper';
+    }
+
     sttMode = mode;
     try {
       localStorage.setItem('echo_stt_mode', sttMode);
@@ -279,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (sttMode === 'whisper') {
       useWhisperFallback = true;
-      autoListen = false;
+      autoListen = Boolean(appSettings.autoListen);
     } else if (sttMode === 'browser') {
       useWhisperFallback = false;
       autoListen = Boolean(appSettings.autoListen);
@@ -289,6 +339,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     updateSttButton();
+    if (mobileWhisperOnly && sttBtn) {
+      sttBtn.title = 'Whisper-only on mobile';
+      sttBtn.style.opacity = '0.95';
+    }
   }
 
   function applyVoiceProfileToUtterance(utterance) {
@@ -326,6 +380,24 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.getItem('echo_app_settings') || '{}',
       );
       appSettings = { ...DEFAULT_APP_SETTINGS, ...(saved || {}) };
+
+      // One-time migration: older builds forced mobile autoSpeak/autoListen off.
+      // Restore sane defaults for non-iOS mobile users.
+      const migrated = localStorage.getItem('echo_mobile_defaults_migrated_v2');
+      if (!migrated && isMobile && !isIOS) {
+        if (
+          appSettings.autoSpeak === false &&
+          appSettings.autoListen === false
+        ) {
+          appSettings.autoSpeak = true;
+          appSettings.autoListen = true;
+          localStorage.setItem(
+            'echo_app_settings',
+            JSON.stringify(appSettings),
+          );
+        }
+        localStorage.setItem('echo_mobile_defaults_migrated_v2', '1');
+      }
     } catch (e) {
       appSettings = { ...DEFAULT_APP_SETTINGS };
     }
@@ -983,6 +1055,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     onboardingScreen.classList.add('hidden');
     appContainer.classList.remove('hidden');
+    document.body.classList.add('in-chat'); // lock body scroll on mobile
     window._echoLevel = selectedLevel;
     if (window.EchoFeatures)
       sessionXPStart = window.EchoFeatures.XP.data.totalXP;
@@ -1143,17 +1216,22 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Whisper server unavailable. Check API keys.', 'error');
       return;
     }
-    const stream =
-      await window.EchoFeatures.Whisper.start(getSttLanguageCode());
-    if (!stream) {
-      showToast('Microphone unavailable', 'error');
-      return;
+    try {
+      const stream =
+        await window.EchoFeatures.Whisper.start(getSttLanguageCode());
+      if (!stream) {
+        showToast('Microphone unavailable', 'error');
+        return;
+      }
+      whisperRecording = true;
+      recognizing = true;
+      micBtn.classList.add('active');
+      setAvatarState('listening');
+      connectMicToWaveform(stream);
+    } catch (e) {
+      showToast('Microphone permission blocked', 'error');
+      setAvatarState('idle');
     }
-    whisperRecording = true;
-    recognizing = true;
-    micBtn.classList.add('active');
-    setAvatarState('listening');
-    connectMicToWaveform(stream);
   }
 
   async function stopWhisperRecordingAndSend() {
@@ -1167,6 +1245,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const blob = await window.EchoFeatures.Whisper.stop();
     if (!blob) {
       setAvatarState('idle');
+      if (autoListen && !ended && turn === 'user') {
+        setTimeout(() => openMic(), 420);
+      }
       return;
     }
 
@@ -1177,12 +1258,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!result?.ok) {
       setAvatarState('idle');
       showToast(result?.error || 'Whisper transcription failed', 'error');
+      if (autoListen && !ended && turn === 'user') {
+        setTimeout(() => openMic(), 520);
+      }
       return;
     }
     const transcript = result?.text?.trim();
     if (!transcript) {
       setAvatarState('idle');
-      showToast('No speech detected', 'error');
+      showToast('No speech detected', '');
+      if (autoListen && !ended && turn === 'user') {
+        setTimeout(() => openMic(), 520);
+      }
       return;
     }
 
@@ -1193,10 +1280,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     addMessage(transcript, 'user');
     turn = 'ai';
+    resetTurnStuckTimer();
     fetchStreamingResponse(conversationHistory);
   }
 
-  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  if (
+    !mobileWhisperOnly &&
+    ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)
+  ) {
     browserSpeechAvailable = true;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
@@ -1216,6 +1307,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         addMessage(transcript, 'user');
         turn = 'ai';
+        resetTurnStuckTimer();
         fetchStreamingResponse(conversationHistory);
       }
     };
@@ -1255,6 +1347,12 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshWhisperAvailability();
 
   sttBtn?.addEventListener('click', () => {
+    if (mobileWhisperOnly) {
+      setSttMode('whisper');
+      showToast('Mobile uses Whisper only', '');
+      return;
+    }
+
     const order = ['auto', 'whisper', 'browser'];
     const idx = order.indexOf(sttMode);
     const nextMode = order[(idx + 1) % order.length];
@@ -1343,6 +1441,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!userScrolledUp) messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
+  async function fetchNonStreamingResponse(history, { signal } = {}) {
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        history,
+        level: selectedLevel,
+        topic: selectedTopic,
+        language: selectedLanguage,
+        scenario: selectedScenario,
+      }),
+      signal,
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || `Server error ${res.status}`);
+    }
+
+    const text = (data.response || '').trim();
+    if (!text) {
+      throw new Error('Empty response from AI service');
+    }
+
+    return text;
+  }
+
   messagesDiv.addEventListener('scroll', () => {
     userScrolledUp =
       messagesDiv.scrollHeight -
@@ -1360,6 +1485,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const typingEl = showTypingIndicator();
 
     try {
+      const supportsStreamReader =
+        !isMobile &&
+        typeof ReadableStream !== 'undefined' &&
+        typeof TextDecoder !== 'undefined' &&
+        typeof AbortController !== 'undefined';
+
+      if (!supportsStreamReader) {
+        const text = await fetchNonStreamingResponse(history);
+        if (typingEl.parentNode) typingEl.remove();
+        const streamMsg = addMessageToDOM(text, 'ai');
+        const fullText = text;
+        streamMsg.classList.remove('streaming');
+        conversationHistory.push({ role: 'assistant', content: fullText });
+        msgCount++;
+        updateStats();
+        saveHistory();
+        reactToEmotion(fullText);
+        parseCorrections(fullText);
+        parseVocab(fullText);
+        if (window.EchoFeatures) window.EchoFeatures.XP.trackMessage();
+        if (appSettings.autoSpeak && !isMuted) {
+          turn = 'ai-speaking';
+          speak(fullText);
+        } else {
+          stopLipSync();
+          setAvatarState('idle');
+          turn = 'user';
+          if (autoListen && !ended) setTimeout(() => openMic(), 300);
+        }
+        return;
+      }
+
+      const streamController = new AbortController();
+      const hardTimeout = setTimeout(() => {
+        streamController.abort();
+      }, 90000);
+
       const res = await fetch('/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1370,11 +1532,18 @@ document.addEventListener('DOMContentLoaded', () => {
           language: selectedLanguage,
           scenario: selectedScenario,
         }),
+        signal: streamController.signal,
       });
 
       if (!res.ok) {
+        clearTimeout(hardTimeout);
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || `Server error ${res.status}`);
+      }
+
+      if (!res.body || !res.body.getReader) {
+        clearTimeout(hardTimeout);
+        throw new Error('Streaming unsupported on this browser');
       }
 
       if (typingEl.parentNode) typingEl.remove();
@@ -1383,6 +1552,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let firstTokenSeen = false;
+      let firstTokenTimeout = setTimeout(() => {
+        try {
+          streamController.abort();
+        } catch (e) {}
+      }, 20000);
 
       setAvatarState('speaking');
       startLipSync();
@@ -1402,6 +1577,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = JSON.parse(payload);
             if (data.error) throw new Error(data.error);
             if (data.token) {
+              if (!firstTokenSeen) {
+                firstTokenSeen = true;
+                clearTimeout(firstTokenTimeout);
+              }
               fullText += data.token;
               streamMsg.innerHTML = formatMessage(fullText);
               smartScroll();
@@ -1410,6 +1589,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.message && !e.message.includes('JSON')) throw e;
           }
         }
+      }
+
+      clearTimeout(firstTokenTimeout);
+      clearTimeout(hardTimeout);
+
+      if (!fullText.trim()) {
+        throw new Error('Empty streaming response');
       }
 
       streamMsg.classList.remove('streaming');
@@ -1436,6 +1622,52 @@ document.addEventListener('DOMContentLoaded', () => {
         if (autoListen && !ended) setTimeout(() => openMic(), 300);
       }
     } catch (error) {
+      const canFallbackToJson =
+        error?.name === 'AbortError' ||
+        /Streaming unsupported|Empty streaming response|Failed to fetch|NetworkError/i.test(
+          error?.message || '',
+        );
+
+      if (canFallbackToJson) {
+        try {
+          if (typingEl.parentNode) typingEl.remove();
+          const fallbackTyping = showTypingIndicator();
+          const text = await fetchNonStreamingResponse(history);
+          if (fallbackTyping.parentNode) fallbackTyping.remove();
+          addMessageToDOM(text, 'ai');
+          conversationHistory.push({ role: 'assistant', content: text });
+          msgCount++;
+          updateStats();
+          saveHistory();
+          reactToEmotion(text);
+          parseCorrections(text);
+          parseVocab(text);
+          if (window.EchoFeatures) window.EchoFeatures.XP.trackMessage();
+          if (appSettings.autoSpeak && !isMuted) {
+            turn = 'ai-speaking';
+            speak(text);
+          } else {
+            stopLipSync();
+            setAvatarState('idle');
+            turn = 'user';
+            if (autoListen && !ended) setTimeout(() => openMic(), 300);
+          }
+          return;
+        } catch (fallbackError) {
+          if (typingEl.parentNode) typingEl.remove();
+          addMessageToDOM(
+            fallbackError.message || 'Connection error',
+            'ai-error',
+          );
+          setAvatarState('idle');
+          stopLipSync();
+          turn = 'user';
+          showToast(fallbackError.message || 'Connection error', 'error');
+          if (autoListen && !ended) openMic();
+          return;
+        }
+      }
+
       if (typingEl.parentNode) typingEl.remove();
       addMessageToDOM(error.message || 'Connection error', 'ai-error');
       setAvatarState('idle');
@@ -1479,7 +1711,9 @@ document.addEventListener('DOMContentLoaded', () => {
     speechSessionId += 1;
     const sessionId = speechSessionId;
 
-    if (!('speechSynthesis' in window) || isMuted) {
+    // iOS Safari TTS is completely unreliable (needs gesture, often fires no onend)
+    // Skip TTS on iOS entirely — just finish speaking immediately
+    if (isIOS || !('speechSynthesis' in window) || isMuted) {
       stopLipSync();
       finishSpeaking(sessionId);
       return;
@@ -1494,32 +1728,49 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // On mobile, use short safety timeout (8s max) to avoid getting stuck
+    const ttsSafetyMs = isMobile
+      ? Math.max(2000, Math.min(clean.length * 50, 8000))
+      : Math.max(5000, Math.min(clean.length * 60, 40000));
+    const ttsWatchdog = setTimeout(() => {
+      if (sessionId !== speechSessionId) return;
+      console.warn('[Echo] TTS watchdog fired — forcing finishSpeaking');
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+      stopLipSync();
+      finishSpeaking(sessionId);
+    }, ttsSafetyMs);
+
+    function doneSpeaking() {
+      clearTimeout(ttsWatchdog);
+      if (sessionId !== speechSessionId) return;
+      stopLipSync();
+      finishSpeaking(sessionId);
+    }
+
     if (clean.length > 200) {
-      speakChunked(clean, sessionId);
+      speakChunked(clean, sessionId, ttsWatchdog);
       return;
     }
 
     const utter = new SpeechSynthesisUtterance(clean);
     applyVoiceProfileToUtterance(utter);
-    utter.onend = () => {
-      if (sessionId !== speechSessionId) return;
-      stopLipSync();
-      finishSpeaking(sessionId);
-    };
-    utter.onerror = () => {
-      if (sessionId !== speechSessionId) return;
-      stopLipSync();
-      finishSpeaking(sessionId);
-    };
+    utter.onend = doneSpeaking;
+    utter.onerror = doneSpeaking;
     window.speechSynthesis.speak(utter);
   }
 
-  function speakChunked(text, sessionId) {
+  function speakChunked(text, sessionId, externalWatchdog) {
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
     let idx = 0;
     function next() {
-      if (sessionId !== speechSessionId) return;
+      if (sessionId !== speechSessionId) {
+        if (externalWatchdog) clearTimeout(externalWatchdog);
+        return;
+      }
       if (idx >= sentences.length) {
+        if (externalWatchdog) clearTimeout(externalWatchdog);
         stopLipSync();
         finishSpeaking(sessionId);
         return;
@@ -1549,6 +1800,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function finishSpeaking(sessionId = speechSessionId) {
     if (sessionId !== speechSessionId) return;
+    if (turnStuckTimer) clearTimeout(turnStuckTimer);
     stopLipSync();
     setAvatarState('idle');
     turn = 'user';
@@ -1576,43 +1828,86 @@ document.addEventListener('DOMContentLoaded', () => {
       startWhisperRecording();
       return;
     }
-    if (!recognition || recognizing || ended || turn !== 'user') return;
+    if (!recognition || recognizing || ended || turn !== 'user') {
+      if (!recognition && !canUseWhisperClient() && !ended) {
+        showToast('Microphone not supported in this browser', 'error');
+      }
+      return;
+    }
     try {
       if (audioContext && audioContext.state === 'suspended')
         audioContext.resume();
       recognition.start();
-    } catch (e) {}
+    } catch (e) {
+      if (canUseWhisperClient()) {
+        setSttMode('whisper');
+        startWhisperRecording();
+      } else {
+        showToast('Microphone permission blocked', 'error');
+        setAvatarState('idle');
+      }
+    }
   }
   function closeMic() {
-    if (useWhisperFallback) return;
+    if (useWhisperFallback) {
+      if (window.EchoFeatures?.Whisper && whisperRecording) {
+        whisperRecording = false;
+        recognizing = false;
+        micBtn.classList.remove('active');
+        window.EchoFeatures.Whisper.stop().catch?.(() => null);
+      }
+      return;
+    }
     if (recognition && recognizing)
       try {
         recognition.abort();
       } catch (e) {}
   }
 
-  micBtn.addEventListener('click', () => {
+  function handleMicTap() {
+    // On mobile: tap mic while AI is stuck → force unlock then start listening
+    if (turn !== 'user' && !ended) {
+      try {
+        window.speechSynthesis?.cancel();
+      } catch (e) {}
+      stopLipSync();
+      speechSessionId += 1;
+      if (turnStuckTimer) clearTimeout(turnStuckTimer);
+      turn = 'user';
+      setAvatarState('idle');
+    }
     if (useWhisperFallback) {
       if (whisperRecording) {
         stopWhisperRecordingAndSend();
-      } else if (turn === 'user' && !ended) {
+      } else if (!ended) {
         startWhisperRecording();
       }
       return;
     }
-
     if (recognizing) {
       closeMic();
       return;
     }
-    if (turn !== 'user' || ended) return;
+    if (ended) return;
     openMic();
+  }
+
+  // touchend fires before click → use preventDefault to suppress the synthetic click
+  micBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    handleMicTap();
   });
+  micBtn.addEventListener('click', handleMicTap); // desktop fallback
 
   // ============================================
   // 10. SEND TEXT
   // ============================================
-  sendBtn.addEventListener('click', () => sendText());
+  // touchend fires before click on mobile — preventDefault suppresses synthetic click
+  sendBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    sendText();
+  });
+  sendBtn.addEventListener('click', () => sendText()); // desktop fallback
   textInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -1623,11 +1918,28 @@ document.addEventListener('DOMContentLoaded', () => {
   function sendText() {
     if (enforceGuestTrialLimit()) return;
     const text = textInput.value.trim();
-    if (!text || turn !== 'user' || ended) return;
+    if (!text || ended) return;
+    // Always allow interrupt: cancel any ongoing TTS/STT and take control
+    if (turn !== 'user') {
+      try {
+        window.speechSynthesis?.cancel();
+      } catch (e) {}
+      if (recognition && recognizing) {
+        try {
+          recognition.abort();
+        } catch (e) {}
+      }
+      stopLipSync();
+      speechSessionId += 1;
+      if (turnStuckTimer) clearTimeout(turnStuckTimer);
+      turn = 'user';
+      setAvatarState('idle');
+    }
     textInput.value = '';
     textInput.style.height = 'auto';
     addMessage(text, 'user');
     turn = 'ai';
+    resetTurnStuckTimer();
     fetchStreamingResponse(conversationHistory);
   }
 

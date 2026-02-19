@@ -332,6 +332,44 @@
         margin-top: 10px;
       }
 
+      .platform-note {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(99, 179, 237, 0.4);
+        background: rgba(12, 24, 46, 0.7);
+        color: #e8f4ff;
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+
+      .platform-note.android {
+        border-color: rgba(104, 211, 145, 0.55);
+        background: rgba(11, 44, 31, 0.45);
+      }
+
+      .platform-note.ios {
+        border-color: rgba(246, 173, 85, 0.55);
+        background: rgba(63, 43, 11, 0.4);
+      }
+
+      .android-strip {
+        margin-top: 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(99, 179, 237, 0.45);
+        background: rgba(10, 17, 33, 0.85);
+      }
+
+      .android-strip-label {
+        color: #9fcdf4;
+        font-size: 0.82rem;
+        font-weight: 600;
+      }
+
       /* Enhanced Buttons */
       .btn-glow {
         box-shadow: 0 0 20px var(--landing-accent-glow);
@@ -1047,13 +1085,13 @@
       <div class="nav-links">
         <a
           href="{{ url_for('app_page', guest='1') }}"
-          class="btn-ghost-nav desktop-only"
+          class="btn-ghost-nav desktop-only web-entry-link"
           >Try for Free</a
         >
-        <a href="{{ url_for('login_page') }}" class="nav-link">Log In</a>
+        <a href="{{ url_for('login_page') }}" class="nav-link web-entry-link">Log In</a>
         <a
           href="{{ url_for('signup_page') }}"
-          class="btn-glow"
+          class="btn-glow web-entry-link"
           style="padding: 8px 20px; font-size: 0.9rem; margin-left: 10px"
           >Get Started</a
         >
@@ -1073,16 +1111,24 @@
             scenarios, and personalized coaching anytime, anywhere.
           </p>
           <div class="cta-group">
-            <a href="{{ url_for('signup_page') }}" class="btn-glow"
+            <a href="{{ url_for('signup_page') }}" class="btn-glow web-entry-link"
               >Start For Free</a
             >
-            <a href="{{ url_for('app_page', guest='1') }}" class="btn-outline"
+            <a href="{{ url_for('app_page', guest='1') }}" class="btn-outline web-entry-link"
               >Try as Guest</a
+            >
+            <a href="#" class="btn-outline" id="android-download-btn"
+              >Download Android APK</a
             >
           </div>
           <p class="cta-hint">
             No credit card required · Instant access for guests
           </p>
+          <div class="android-strip">
+            <span class="android-strip-label">Android App:</span>
+            <span id="android-status-text" style="color:#e6f4ff;font-weight:700">APK Available</span>
+          </div>
+          <div id="platform-note" class="platform-note" style="display: none"></div>
         </div>
 
         <div class="hero-visual">
@@ -1482,8 +1528,15 @@
             Join thousands of learners mastering new languages today. Start your
             journey now completely free.
           </p>
-          <a href="{{ url_for('signup_page') }}" class="btn-glow btn-lg"
+          <a href="{{ url_for('signup_page') }}" class="btn-glow btn-lg web-entry-link"
             >Get Started Free</a
+          >
+          <a
+            href="#"
+            class="btn-outline btn-lg"
+            id="android-download-btn-footer"
+            style="margin-top: 12px"
+            >Download Android APK</a
           >
         </div>
       </section>
@@ -1502,7 +1555,7 @@
           <h4>Product</h4>
           <a href="#features">Features</a>
           <a href="#">Pricing</a>
-          <a href="{{ url_for('app_page', guest='1') }}">Try Demo</a>
+          <a href="{{ url_for('app_page', guest='1') }}" class="web-entry-link">Try Demo</a>
         </div>
         <div class="footer-col">
           <h4>Resources</h4>
@@ -1522,11 +1575,68 @@
             <p>&copy; 2026 RobovAI.tech. All rights reserved.</p>
 
     <script>
+      // NOTE: ضع رابط APK النهائي هنا بعد الرفع
+      const ANDROID_APK_URL = 'https://drive.google.com/uc?export=download&id=187xq3BXR5P0InPfHJAnp1mjAOgYQlqPn';
+
       // Starfield Background
       const canvas = document.getElementById('stars-canvas');
       const ctx = canvas.getContext('2d');
       let width, height;
       const stars = [];
+
+      const ua = navigator.userAgent || '';
+      const isAndroid = /Android/i.test(ua);
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+      const platformNoteEl = document.getElementById('platform-note');
+      const androidStatusText = document.getElementById('android-status-text');
+      const webEntryLinks = document.querySelectorAll('.web-entry-link');
+      const downloadButtons = [
+        document.getElementById('android-download-btn'),
+        document.getElementById('android-download-btn-footer'),
+      ].filter(Boolean);
+
+      function goToAndroidApk() {
+        if (ANDROID_APK_URL) {
+          window.location.href = ANDROID_APK_URL;
+          return;
+        }
+        alert('Android APK link will be added shortly.');
+      }
+
+      downloadButtons.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          goToAndroidApk();
+        });
+      });
+
+      if (androidStatusText) {
+        androidStatusText.textContent = ANDROID_APK_URL
+          ? 'APK Available'
+          : 'APK Link Coming Soon';
+      }
+
+      if (platformNoteEl && isAndroid) {
+        platformNoteEl.style.display = 'block';
+        platformNoteEl.classList.add('android');
+        platformNoteEl.textContent =
+          'Android detected: please install the Android app APK for the best experience. Web access is disabled on Android devices.';
+
+        webEntryLinks.forEach((link) => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            goToAndroidApk();
+          });
+        });
+      }
+
+      if (platformNoteEl && isIOS) {
+        platformNoteEl.style.display = 'block';
+        platformNoteEl.classList.add('ios');
+        platformNoteEl.textContent =
+          'iOS app is coming soon. You can continue normally with the web version for now.';
+      }
 
       function initStars() {
         width = canvas.width = window.innerWidth;
@@ -1611,9 +1721,9 @@
       // PWA Service Worker Registration
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register("{{ url_for('static', filename='service-worker.js') }}")
-            .then(reg => console.log('SW registered:', reg))
-            .catch(err => console.log('SW failed:', err));
+          navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+            .then((reg) => console.log('SW registered:', reg))
+            .catch((err) => console.log('SW failed:', err));
         });
       }
 

@@ -155,7 +155,6 @@ body {
   animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1);
   overflow-y: auto;
 }
-}
 
 /* Logo Orb */
 .onboarding-logo {
@@ -359,6 +358,8 @@ body {
   flex-direction: column;
   padding: 0 16px;
   animation: fadeIn 0.5s ease;
+  /* Prevent content being hidden under keyboard on iOS */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .app-container.hidden {
   display: none;
@@ -999,6 +1000,10 @@ body {
   gap: 8px;
   padding: 10px 0 20px;
   flex-shrink: 0;
+  /* Always visible above keyboard */
+  position: relative;
+  z-index: 10;
+  padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
 }
 
 .ctrl-btn {
@@ -1268,10 +1273,179 @@ body {
    RESPONSIVE
    ============================================ */
 @media (max-width: 520px) {
-  .app-container {
-    max-width: 100%;
-    padding: 0 10px;
+  /* ── BODY ── */
+  body {
+    overflow-y: auto; /* allow onboarding to scroll */
   }
+  body.in-chat {
+    overflow-y: hidden; /* lock scroll in chat */
+  }
+
+  /* ── APP CONTAINER ── */
+  .app-container {
+    padding: 0 8px;
+    /* dvh shrinks when keyboard opens; svh as older-browser fallback */
+    height: 100svh;
+    height: 100dvh;
+    max-width: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+    overscroll-behavior: none;
+  }
+
+  /* ── HEADER ── */
+  .app-header {
+    padding: 8px 0 6px;
+    flex-shrink: 0;
+    gap: 4px;
+  }
+  .header-left {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .header-left img {
+    width: 30px !important;
+    height: 30px !important;
+    margin-right: 6px !important;
+  }
+  .header-title {
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+  }
+  .header-status {
+    font-size: 0.55rem;
+  }
+  .header-right {
+    gap: 4px;
+    overflow: hidden;
+    flex-shrink: 1;
+  }
+  /* Hide less critical header items on mobile to prevent overflow */
+  .session-stats {
+    display: none;
+  }
+  .xp-display {
+    display: none;
+  }
+  .streak-display {
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── AVATAR ── */
+  .avatar-section {
+    padding: 4px 0 2px;
+    flex-shrink: 0;
+  }
+  .avatar-container {
+    width: 90px;
+    height: 90px;
+  }
+  .avatar-glow {
+    width: 78px;
+    height: 78px;
+  }
+  .ring-outer {
+    width: 86px;
+    height: 86px;
+  }
+  .ring-inner {
+    width: 74px;
+    height: 74px;
+  }
+  .avatar-orb {
+    width: 60px;
+    height: 60px;
+  }
+  .state-label {
+    font-size: 0.6rem;
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+  .emotion-indicator {
+    height: 16px;
+    font-size: 0.85rem;
+  }
+
+  /* ── CHAT PANEL ── */
+  .chat-panel {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 10px;
+    margin-bottom: 0;
+  }
+  .messages-container {
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* ── CONTROLS BAR ── */
+  .controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 0 max(14px, env(safe-area-inset-bottom, 14px));
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border-glass);
+    z-index: 20;
+    /* GPU layer — prevents Android Chrome burying bar behind keyboard */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+  }
+
+  /* All control buttons: 44px touch target (Apple/Google HIG minimum) */
+  .ctrl-btn {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    /* Make embedded SVGs not steal pointer events */
+    pointer-events: auto;
+  }
+  .ctrl-btn svg,
+  .ctrl-btn span {
+    pointer-events: none;
+  }
+
+  .send-btn {
+    width: 48px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+
+  /* Shrink the AUTO / STT label button to save space */
+  .stt-btn {
+    width: 36px;
+    height: 44px;
+    font-size: 0.55rem;
+    padding: 0 2px;
+    min-width: 36px;
+  }
+
+  .chat-input {
+    font-size: 16px; /* blocks iOS auto-zoom (needs ≥16px) */
+    padding: 10px 12px;
+    -webkit-tap-highlight-color: transparent;
+    min-width: 0; /* allow flex shrink */
+  }
+
+  /* ── ONBOARDING ── */
   .onboarding-title {
     font-size: 1.8rem;
   }
@@ -1285,30 +1459,22 @@ body {
   .topic-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  .avatar-container {
-    width: 120px;
-    height: 120px;
+  .scenario-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
-  .avatar-orb {
-    width: 72px;
-    height: 72px;
-  }
-  .ring-outer {
-    width: 110px;
-    height: 110px;
-  }
-  .ring-inner {
-    width: 94px;
-    height: 94px;
-  }
+
+  /* ── SIDE PANEL ── */
   .side-panel {
     width: 100%;
     right: -100%;
   }
 
-  /* On very small screens allow page scrolling if needed */
-  body {
+  /* ── MODALS ── */
+  .modal-card {
+    width: 95vw;
+    max-height: 90vh;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
