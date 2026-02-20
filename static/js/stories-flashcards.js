@@ -215,18 +215,40 @@ window.EchoExtra = (function () {
         });
       }
 
-      // Image via Pollinations
-      if (imgEl && data.image_prompt) {
-        const imgUrl = pollinationsUrl(data.image_prompt);
-        imgEl.onload = () => {
-          if (shimmer) shimmer.classList.add('hidden');
-          imgEl.classList.remove('hidden');
-        };
-        imgEl.onerror = () => {
-          if (shimmer) shimmer.classList.add('hidden');
-        };
-        imgEl.src = imgUrl;
-        imgEl.alt = data.title || 'Story illustration';
+      // Image via backend (Unsplash → Pexels → Pollinations fallback)
+      if (imgEl && (data.image_prompt || this.currentTopic)) {
+        fetch('/story/image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topic: this.currentTopic,
+            image_prompt: data.image_prompt || data.title || this.currentTopic,
+          }),
+        })
+          .then((r) => r.json())
+          .then((imgData) => {
+            const url = imgData.url || pollinationsUrl(data.image_prompt || this.currentTopic);
+            imgEl.alt = data.title || 'Story illustration';
+            imgEl.onload = () => {
+              if (shimmer) shimmer.classList.add('hidden');
+              imgEl.classList.remove('hidden');
+            };
+            imgEl.onerror = () => {
+              if (shimmer) shimmer.classList.add('hidden');
+            };
+            imgEl.src = url;
+          })
+          .catch(() => {
+            // Pollinations client-side fallback on network error
+            const url = pollinationsUrl(data.image_prompt || this.currentTopic);
+            imgEl.alt = data.title || 'Story illustration';
+            imgEl.onload = () => {
+              if (shimmer) shimmer.classList.add('hidden');
+              imgEl.classList.remove('hidden');
+            };
+            imgEl.onerror = () => { if (shimmer) shimmer.classList.add('hidden'); };
+            imgEl.src = url;
+          });
       } else {
         if (shimmer) shimmer.classList.add('hidden');
       }

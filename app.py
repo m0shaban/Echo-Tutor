@@ -4,6 +4,7 @@ import time
 import json
 import random
 import tempfile
+import requests as _http
 from collections import defaultdict
 from flask import (
     Flask,
@@ -545,9 +546,15 @@ def generate_story():
     level = data.get("level", "intermediate")
     topic = data.get("topic", "daily life")
     lang_names = {
-        "en": "English", "fr": "French", "es": "Spanish",
-        "de": "German", "ar": "Arabic", "it": "Italian",
-        "pt": "Portuguese", "ja": "Japanese", "zh": "Chinese",
+        "en": "English",
+        "fr": "French",
+        "es": "Spanish",
+        "de": "German",
+        "ar": "Arabic",
+        "it": "Italian",
+        "pt": "Portuguese",
+        "ja": "Japanese",
+        "zh": "Chinese",
     }
     lang_name = lang_names.get(language, "English")
     word_counts = {"beginner": 80, "intermediate": 130, "advanced": 180}
@@ -582,6 +589,55 @@ def generate_story():
     except Exception as e:
         logging.error(f"Story generation error: {e}")
         return jsonify({"error": "Could not generate story"}), 500
+
+
+@app.route("/story/image", methods=["POST"])
+def get_story_image():
+    """Fetch a relevant image from Unsplash → Pexels → Pollinations fallback chain."""
+    data = request.json or {}
+    topic = str(data.get("topic", ""))[:60]
+    image_prompt = str(data.get("image_prompt", topic))[:80]
+    query = topic or image_prompt
+
+    # 1. Unsplash (highest quality, free API)
+    if Config.UNSPLASH_ACCESS_KEY:
+        try:
+            r = _http.get(
+                "https://api.unsplash.com/photos/random",
+                params={
+                    "query": query,
+                    "orientation": "landscape",
+                    "count": 1,
+                    "content_filter": "high",
+                },
+                headers={"Authorization": f"Client-ID {Config.UNSPLASH_ACCESS_KEY}"},
+                timeout=5,
+            )
+            if r.ok:
+                photos = r.json()
+                if isinstance(photos, list) and photos:
+                    return jsonify({"url": photos[0]["urls"]["regular"], "source": "unsplash"})
+        except Exception as e:
+            logging.warning(f"Unsplash image fetch failed: {e}")
+
+    # 2. Pexels fallback
+    if Config.PEXELS_API_KEY:
+        try:
+            r = _http.get(
+                "https://api.pexels.com/v1/search",
+                params={"query": query, "per_page": 1, "orientation": "landscape"},
+                headers={"Authorization": Config.PEXELS_API_KEY},
+                timeout=5,
+            )
+            if r.ok:
+                d = r.json()
+                if d.get("photos"):
+                    return jsonify({"url": d["photos"][0]["src"]["large"], "source": "pexels"})
+        except Exception as e:
+            logging.warning(f"Pexels image fetch failed: {e}")
+
+    # 3. Signal client to use Pollinations (no server-side key needed)
+    return jsonify({"url": None, "source": "pollinations"})
 
 
 def get_welcome_message(topic="free", language="en", scenario=None):

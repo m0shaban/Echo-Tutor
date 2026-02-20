@@ -10,6 +10,12 @@ class Config:
     # --- API Keys ---
     NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "")
 
+    # Image API keys
+    UNSPLASH_ACCESS_KEY = os.environ.get("UNSPLASH_ACCESS_KEY", "")
+    PEXELS_API_KEY = os.environ.get("PEXELS_API_KEY", "")
+    IMGBB_API_KEY = os.environ.get("IMGBB_API_KEY", "")
+    POLLINATIONS_API_KEY = os.environ.get("POLLINATIONS_API_KEY", "")
+
     # Groq keys with rotation support
     GROQ_API_KEYS = [
         k for k in [
