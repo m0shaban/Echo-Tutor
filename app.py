@@ -538,6 +538,52 @@ def submit_leaderboard():
     return jsonify({"ok": True})
 
 
+@app.route("/story/generate", methods=["POST"])
+def generate_story():
+    data = request.json or {}
+    language = data.get("language", "en")
+    level = data.get("level", "intermediate")
+    topic = data.get("topic", "daily life")
+    lang_names = {
+        "en": "English", "fr": "French", "es": "Spanish",
+        "de": "German", "ar": "Arabic", "it": "Italian",
+        "pt": "Portuguese", "ja": "Japanese", "zh": "Chinese",
+    }
+    lang_name = lang_names.get(language, "English")
+    word_counts = {"beginner": 80, "intermediate": 130, "advanced": 180}
+    wc = word_counts.get(level, 130)
+    prompt = (
+        f"Write a short {lang_name} story for a {level} language learner about '{topic}'. "
+        f"The story MUST be written entirely in {lang_name}. "
+        f"Target length: {wc} words. Make it engaging and use common vocabulary. "
+        f"Return ONLY a valid JSON object with these exact fields:\n"
+        f'  "title": story title in {lang_name}\n'
+        f'  "story": the full story text in {lang_name}\n'
+        f'  "vocabulary": array of 6 key words, each with "word" (in {lang_name}), '
+        f'"translation" (English), "example" (short sentence in {lang_name})\n'
+        f'  "image_prompt": vivid 12-word English description of the main scene for AI image generation\n'
+        f"No markdown, no extra text — only the JSON object."
+    )
+    try:
+        completion = client.chat.completions.create(
+            model=Config.MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.75,
+            max_tokens=1400,
+        )
+        raw = completion.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip("`").strip()
+        story_data = json.loads(raw)
+        return jsonify(story_data)
+    except Exception as e:
+        logging.error(f"Story generation error: {e}")
+        return jsonify({"error": "Could not generate story"}), 500
+
+
 def get_welcome_message(topic="free", language="en", scenario=None):
     lang_config = Config.LANGUAGES.get(language, Config.LANGUAGES["en"])
 

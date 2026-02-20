@@ -729,7 +729,173 @@
       </div>
     </div>
 
+    <!-- ============ STORIES SCREEN ============ -->
+    <div class="app-screen hidden" id="stories-screen">
+      <div class="screen-header">
+        <h2 class="screen-title">📖 Stories</h2>
+        <div class="story-level-tabs">
+          <button class="story-lvl-btn active" data-level="beginner">🌱 Beginner</button>
+          <button class="story-lvl-btn" data-level="intermediate">🚀 Mid</button>
+          <button class="story-lvl-btn" data-level="advanced">⚡ Advanced</button>
+        </div>
+      </div>
+      <div class="story-topic-row" id="story-topic-row">
+        <button class="story-topic-chip active" data-topic="daily life">🏠 Daily Life</button>
+        <button class="story-topic-chip" data-topic="travel and adventure">✈️ Travel</button>
+        <button class="story-topic-chip" data-topic="food and cooking">🍳 Food</button>
+        <button class="story-topic-chip" data-topic="friendship">🤝 Friendship</button>
+        <button class="story-topic-chip" data-topic="technology">💻 Tech</button>
+        <button class="story-topic-chip" data-topic="mystery">🔍 Mystery</button>
+      </div>
+      <div class="story-image-wrap" id="story-image-wrap">
+        <div class="story-image-placeholder" id="story-placeholder">
+          <div class="story-placeholder-inner">
+            <span style="font-size:3rem">📖</span>
+            <p>Generate a story to practice reading in your target language</p>
+            <button class="btn-primary story-gen-btn" id="story-generate-btn">
+              <span id="story-gen-label">✨ Generate Story</span>
+            </button>
+          </div>
+        </div>
+        <img class="story-image hidden" id="story-image" alt="Story illustration" loading="lazy" />
+        <div class="story-image-shimmer hidden" id="story-shimmer"></div>
+      </div>
+      <div class="story-card hidden" id="story-card">
+        <div class="story-card-header">
+          <h3 class="story-title" id="story-title"></h3>
+          <div class="story-actions">
+            <button class="story-action-btn" id="story-listen-btn" title="Listen to story">🔊</button>
+            <button class="story-action-btn" id="story-new-btn" title="New story">🔄</button>
+          </div>
+        </div>
+        <div class="story-body" id="story-body"></div>
+        <div class="story-vocab-section">
+          <h4 class="story-vocab-title">📚 Vocabulary</h4>
+          <div class="story-vocab-grid" id="story-vocab-grid"></div>
+        </div>
+        <button class="btn-primary story-practice-btn" id="story-practice-btn">🎯 Practice this Story</button>
+      </div>
+    </div>
+
+    <!-- ============ FLASHCARDS SCREEN ============ -->
+    <div class="app-screen hidden" id="flashcards-screen">
+      <div class="screen-header">
+        <h2 class="screen-title">🃏 Flashcards</h2>
+        <div class="fc-deck-select" id="fc-deck-select">
+          <button class="fc-deck-btn active" data-deck="session">Session Words</button>
+          <button class="fc-deck-btn" data-deck="saved">Saved Deck</button>
+        </div>
+      </div>
+      <div class="fc-stats-row">
+        <div class="fc-stat-chip">📦 <span id="fc-total-count">0</span> cards</div>
+        <div class="fc-stat-chip">✅ <span id="fc-mastered-count">0</span> mastered</div>
+        <div class="fc-stat-chip">🔁 <span id="fc-due-count">0</span> due</div>
+      </div>
+      <div class="srs-card-wrap" id="srs-card-wrap">
+        <div class="srs-empty-state" id="srs-empty">
+          <span style="font-size:3rem">🃏</span>
+          <h3>No cards yet</h3>
+          <p>Chat with Echo to build your vocabulary deck, or generate a story to collect words.</p>
+        </div>
+        <div class="srs-card hidden" id="srs-main-card">
+          <div class="srs-card-inner" id="srs-card-inner">
+            <div class="srs-front">
+              <p class="srs-card-tag" id="srs-lang-tag">Word</p>
+              <h2 class="srs-card-word" id="srs-word"></h2>
+              <p class="srs-card-hint">Tap to reveal</p>
+            </div>
+            <div class="srs-back">
+              <p class="srs-card-translation" id="srs-translation"></p>
+              <p class="srs-card-example" id="srs-example"></p>
+              <button class="srs-speak-btn" id="srs-speak-btn">🔊 Listen</button>
+            </div>
+          </div>
+          <div class="srs-progress-dots" id="srs-dots"></div>
+        </div>
+      </div>
+      <div class="srs-rating-row hidden" id="srs-rating-row">
+        <button class="srs-rate-btn again" data-rating="1">😰<span>Again</span></button>
+        <button class="srs-rate-btn hard"  data-rating="2">😕<span>Hard</span></button>
+        <button class="srs-rate-btn good"  data-rating="3">😊<span>Good</span></button>
+        <button class="srs-rate-btn easy"  data-rating="4">🚀<span>Easy</span></button>
+      </div>
+    </div>
+
+    <!-- ============ PROGRESS SCREEN ============ -->
+    <div class="app-screen hidden" id="progress-screen">
+      <div class="screen-header">
+        <h2 class="screen-title">📊 Progress</h2>
+      </div>
+      <div class="progress-grid">
+        <div class="prog-card xp-card">
+          <div class="prog-card-icon">⭐</div>
+          <div class="prog-card-val" id="prog-xp">0</div>
+          <div class="prog-card-label">Total XP</div>
+          <div class="prog-xp-bar"><div class="prog-xp-fill" id="prog-xp-fill"></div></div>
+        </div>
+        <div class="prog-card">
+          <div class="prog-card-icon">🔥</div>
+          <div class="prog-card-val" id="prog-streak">0</div>
+          <div class="prog-card-label">Day Streak</div>
+        </div>
+        <div class="prog-card">
+          <div class="prog-card-icon">💬</div>
+          <div class="prog-card-val" id="prog-msgs">0</div>
+          <div class="prog-card-label">Messages</div>
+        </div>
+        <div class="prog-card">
+          <div class="prog-card-icon">📚</div>
+          <div class="prog-card-val" id="prog-vocab">0</div>
+          <div class="prog-card-label">Words Learned</div>
+        </div>
+        <div class="prog-card">
+          <div class="prog-card-icon">✏️</div>
+          <div class="prog-card-val" id="prog-corrections">0</div>
+          <div class="prog-card-label">Corrections</div>
+        </div>
+        <div class="prog-card">
+          <div class="prog-card-icon">🎯</div>
+          <div class="prog-card-val" id="prog-exercises">0</div>
+          <div class="prog-card-label">Exercises Done</div>
+        </div>
+      </div>
+      <div class="leaderboard-section">
+        <div class="lb-header">
+          <h3>🏆 Leaderboard</h3>
+          <button class="lb-refresh-btn" id="lb-refresh-btn">🔄</button>
+        </div>
+        <div class="lb-list" id="lb-list">
+          <div class="lb-loading">Loading leaderboard...</div>
+        </div>
+      </div>
+      <div class="badges-progress-section">
+        <h3 style="margin-bottom:12px">🏅 Badges</h3>
+        <div class="badges-full-grid" id="badges-progress-grid"></div>
+      </div>
+    </div>
+
+    <!-- ============ BOTTOM NAVIGATION ============ -->
+    <nav class="bottom-nav hidden" id="bottom-nav">
+      <button class="nav-tab active" data-screen="chat">
+        <span class="nav-tab-icon">💬</span>
+        <span class="nav-tab-label">Chat</span>
+      </button>
+      <button class="nav-tab" data-screen="stories">
+        <span class="nav-tab-icon">📖</span>
+        <span class="nav-tab-label">Stories</span>
+      </button>
+      <button class="nav-tab" data-screen="flashcards">
+        <span class="nav-tab-icon">🃏</span>
+        <span class="nav-tab-label">Cards</span>
+      </button>
+      <button class="nav-tab" data-screen="progress">
+        <span class="nav-tab-icon">📊</span>
+        <span class="nav-tab-label">Progress</span>
+      </button>
+    </nav>
+
     <script src="{{ url_for('static', filename='js/features.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/stories-flashcards.js') }}"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     <script>
       if ('serviceWorker' in navigator) {

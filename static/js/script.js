@@ -752,6 +752,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function saveVocab() {
     try {
       localStorage.setItem('echo_vocab', JSON.stringify(vocabWords));
+      // Sync new words to flashcard deck (echo_vocab_deck)
+      if (window.echoSaveVocabWord) {
+        vocabWords.forEach((v) => {
+          window.echoSaveVocabWord(v.word, v.translation || '', v.context || '');
+        });
+      }
     } catch (e) {}
   }
   function loadVocab() {
@@ -1061,8 +1067,11 @@ document.addEventListener('DOMContentLoaded', () => {
     appContainer.classList.remove('hidden');
     document.body.classList.add('in-chat'); // lock body scroll on mobile
     window._echoLevel = selectedLevel;
+    window._echoLanguage = selectedLanguage;
     if (window.EchoFeatures)
       sessionXPStart = window.EchoFeatures.XP.data.totalXP;
+    // Show bottom nav for Stories / Flashcards / Progress
+    if (window.echoShowNav) window.echoShowNav();
     startSession();
   });
 
