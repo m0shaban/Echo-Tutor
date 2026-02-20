@@ -24,6 +24,11 @@ try:
 except Exception:
     auth_blueprint = None
 
+try:
+    from auth_module.security import decode_access_token as _decode_token
+except Exception:
+    _decode_token = None
+
 # Groq SDK for Whisper
 try:
     from groq import Groq
@@ -47,6 +52,9 @@ START_TIME = time.time()
 
 # --- Rate Limiter (in-memory) ---
 rate_limits = defaultdict(list)
+
+# --- In-memory leaderboard ---
+_leaderboard: dict = {}  # keyed by email (from JWT) or IP
 
 
 def get_client_ip():
@@ -503,6 +511,31 @@ def generate_exercises():
     except Exception as e:
         logging.error(f"Exercise generation error: {e}")
         return jsonify({"error": "Could not generate exercises"}), 500
+
+
+@app.route("/leaderboard", methods=["GET"])
+def get_leaderboard():
+    top = sorted(_leaderboard.values(), key=lambda x: x["xp"], reverse=True)[:10]
+    return jsonify(top)
+
+
+@app.route("/leaderboard", methods=["POST"])
+def submit_leaderboard():
+    data = request.json or {}
+    key = get_client_ip()
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.lower().startswith("bearer ") and _decode_token:
+        token = auth_header.split(" ", 1)[1]
+        payload = _decode_token(token)
+        if payload:
+            key = payload.get("sub", key)
+    _leaderboard[key] = {
+        "name": str(data.get("name", "Anonymous"))[:40],
+        "xp": max(0, int(data.get("xp", 0))),
+        "level": max(1, int(data.get("level", 1))),
+        "flag": str(data.get("flag", "\U0001f30d"))[:8],
+    }
+    return jsonify({"ok": True})
 
 
 def get_welcome_message(topic="free", language="en", scenario=None):
