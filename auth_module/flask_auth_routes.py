@@ -78,6 +78,16 @@ def _proxy_to_nova(
     url = f"{nova_url}{path}"
     headers = {"Accept": "application/json", "X-App-ID": auth_settings.APP_ID}
 
+    client_ip = (
+        (request.headers.get("X-Client-IP", "") or "").strip()
+        or (request.headers.get("X-Forwarded-For", "") or "").split(",", 1)[0].strip()
+        or (request.headers.get("X-Real-IP", "") or "").strip()
+        or (request.remote_addr or "")
+    )
+    if client_ip:
+        headers["X-Client-IP"] = client_ip
+        headers["X-Forwarded-For"] = client_ip
+
     auth_header = request.headers.get("Authorization", "").strip()
     token = _extract_token_from_request()
     if auth_header:

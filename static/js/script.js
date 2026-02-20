@@ -85,7 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
         stopLipSync();
         turn = 'user';
         setAvatarState('idle');
-        showToast('Ready — tap to chat', '');
+        // showToast('Ready — tap to chat', '');
+        // On mobile, hanging often means the audio context needs a user gesture.
+        // We can't auto-start it here reliably, but we can reset to let the user tap.
       }
     }, stuckMs);
   }
@@ -313,8 +315,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateSttButton() {
     if (!sttBtn) return;
-    const labels = { auto: 'AUTO', whisper: 'WHSP', browser: 'BROW' };
-    sttBtn.textContent = labels[sttMode] || 'AUTO';
+    // User doesn't need to know the engine.
+    // We just hide it or show a simple indicator if debugging is needed.
+    // For production/user-facing, we hide the text content or set it to blank.
+    sttBtn.style.display = 'none';
   }
 
   function setSttMode(mode) {
@@ -1096,11 +1100,11 @@ document.addEventListener('DOMContentLoaded', () => {
     );
     avatarContainer.classList.add(state);
     const labels = {
-      idle: '💤 Ready to chat',
-      listening: '👂 Listening...',
-      speaking: '🗣️ Speaking...',
-      thinking: '🤔 Thinking...',
-      happy: '😊 Great!',
+      idle: 'Tap to chat',
+      listening: 'Listening...',
+      speaking: 'Speaking...',
+      thinking: 'Thinking...',
+      happy: 'Great!',
     };
     stateLabel.textContent = labels[state] || 'Ready';
     headerStatus.textContent = labels[state] || 'Ready';
@@ -1216,11 +1220,27 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('Whisper server unavailable. Check API keys.', 'error');
       return;
     }
+
+    // Safety timeout to prevent infinite "Listening..." state if mic fails
+    const safetyTimer = setTimeout(() => {
+      if (recognizing && whisperRecording) {
+        console.warn('Whisper start timeout - resetting');
+        whisperRecording = false;
+        recognizing = false;
+        micBtn.classList.remove('active');
+        setAvatarState('idle');
+        showToast('Microphone error — tap to retry', 'error');
+      }
+    }, 5000);
+
     try {
       const stream =
         await window.EchoFeatures.Whisper.start(getSttLanguageCode());
+      clearTimeout(safetyTimer);
+
       if (!stream) {
         showToast('Microphone unavailable', 'error');
+        setAvatarState('idle');
         return;
       }
       whisperRecording = true;
@@ -1229,6 +1249,7 @@ document.addEventListener('DOMContentLoaded', () => {
       setAvatarState('listening');
       connectMicToWaveform(stream);
     } catch (e) {
+      clearTimeout(safetyTimer);
       showToast('Microphone permission blocked', 'error');
       setAvatarState('idle');
     }
@@ -1266,9 +1287,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const transcript = result?.text?.trim();
     if (!transcript) {
       setAvatarState('idle');
-      showToast('No speech detected', '');
+      // showToast('No speech detected', ''); // Too spammy for users
       if (autoListen && !ended && turn === 'user') {
-        setTimeout(() => openMic(), 520);
+        // Retry once, then stop to avoid loop
+        // setTimeout(() => openMic(), 520);
+        // Actually, better to just let the user tap again if silence
       }
       return;
     }
@@ -1843,8 +1866,14 @@ document.addEventListener('DOMContentLoaded', () => {
         setSttMode('whisper');
         startWhisperRecording();
       } else {
-        showToast('Microphone permission blocked', 'error');
+        // Silent failure or blocked permission often happens here on mobile auto-start
+        // Reset state so user can manually tap
         setAvatarState('idle');
+        // Only show toast if it's a clear error, otherwise it's just spammy
+        if (e.name !== 'NotAllowedError') {
+          // Common on mobile without gesture
+          console.log('Mic start failed (gesture required?)', e);
+        }
       }
     }
   }

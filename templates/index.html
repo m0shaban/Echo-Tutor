@@ -360,10 +360,12 @@
           </svg>
           <div class="mic-pulse" id="mic-pulse"></div>
         </button>
+        <!-- STT Button Hidden for User Simplicity -->
         <button
-          class="ctrl-btn stt-btn"
+          class="ctrl-btn stt-btn hidden"
           id="stt-btn"
           title="Speech-to-Text mode"
+          style="display: none"
         >
           AUTO
         </button>
@@ -703,7 +705,7 @@
           </label>
           <label class="setting-item">
             <div class="setting-copy">
-              <span class="setting-name">Waveform while listening</span>
+              <span class="setting-name">Voice Visualizer</span>
               <span class="setting-desc"
                 >Show audio activity bars during mic input</span
               >

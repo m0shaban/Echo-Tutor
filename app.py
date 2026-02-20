@@ -49,6 +49,20 @@ START_TIME = time.time()
 rate_limits = defaultdict(list)
 
 
+def get_client_ip():
+    forwarded = (request.headers.get("X-Forwarded-For", "") or "").strip()
+    if forwarded:
+        first_ip = forwarded.split(",", 1)[0].strip()
+        if first_ip:
+            return first_ip
+
+    real_ip = (request.headers.get("X-Real-IP", "") or "").strip()
+    if real_ip:
+        return real_ip
+
+    return request.remote_addr or "unknown"
+
+
 def is_rate_limited(ip):
     now = time.time()
     window = 60
@@ -302,7 +316,7 @@ def chat():
     if not client:
         return jsonify({"error": "AI service is currently unavailable."}), 503
 
-    if is_rate_limited(request.remote_addr):
+    if is_rate_limited(get_client_ip()):
         return jsonify({"error": "Too many requests. Please slow down."}), 429
 
     data = request.json or {}
@@ -349,7 +363,7 @@ def chat_stream():
     if not client:
         return jsonify({"error": "AI service is currently unavailable."}), 503
 
-    if is_rate_limited(request.remote_addr):
+    if is_rate_limited(get_client_ip()):
         return jsonify({"error": "Too many requests. Please slow down."}), 429
 
     data = request.json or {}
