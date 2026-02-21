@@ -180,8 +180,8 @@
             "
           />
           <div class="header-text">
-            <h1 class="header-title">ECHO <span class="accent">TUTOR</span></h1>
-            <span class="header-status" id="header-status">Ready</span>
+            <h1 class="header-title" data-i18n="app_title">ECHO <span class="accent">TUTOR</span></h1>
+            <span class="header-status" id="header-status" data-i18n="ready">Ready</span>
           </div>
         </div>
         <div class="header-right">
@@ -212,6 +212,8 @@
           <button class="icon-btn" id="auth-btn" title="Login / Account">
             <span id="auth-user-label">👤</span>
           </button>
+          <!-- UI Language Toggle -->
+          <button class="icon-btn" id="ui-lang-toggle-chat" title="Toggle Arabic/English UI" onclick="window.setUILanguage(document.documentElement.lang === 'en' ? 'ar' : 'en')" style="font-size:11px;font-weight:700;min-width:36px;">عربي</button>
           <!-- Theme Toggle -->
           <button class="icon-btn" id="theme-btn" title="Toggle Theme">
             <svg

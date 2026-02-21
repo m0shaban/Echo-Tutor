@@ -12,3 +12,4 @@ Thumbs.db
 users.db
 *.db
 auth_module/.jwt_secret
+bin/

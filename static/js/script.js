@@ -131,6 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggleBtn) {
       toggleBtn.textContent = lang === 'ar' ? 'English' : 'عربي';
     }
+    const toggleChatBtn = $('ui-lang-toggle-chat');
+    if (toggleChatBtn) {
+      toggleChatBtn.textContent = lang === 'ar' ? 'EN' : 'عربي';
+    }
   };
 
   // ─── STREAK LOGIC ───
