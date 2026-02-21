@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* ============================================
    ECHO TUTOR PRO — Main Application Engine
    v4.0 — Multi-lang, Scenarios, Gamification

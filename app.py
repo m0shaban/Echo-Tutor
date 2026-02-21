@@ -5,7 +5,9 @@ import json
 import random
 import hashlib
 import tempfile
+from typing import cast
 import requests as _http
+from openai.types.chat import ChatCompletionMessageParam
 from collections import defaultdict
 from flask import (
     Flask,
@@ -158,7 +160,7 @@ else:
 # --- Load Exercises ---
 EXERCISES = {}
 try:
-    exercises_path = os.path.join(app.static_folder, "data", "exercises.json")
+    exercises_path = os.path.join(app.static_folder or "", "data", "exercises.json")
     with open(exercises_path, "r", encoding="utf-8") as f:
         EXERCISES = json.load(f)
     total = sum(len(v) for v in EXERCISES.values())
@@ -377,7 +379,7 @@ def transcribe():
         if "tmp_path" in locals():
             try:
                 os.unlink(tmp_path)
-            except:
+            except Exception:
                 pass
         return jsonify({"error": str(e)}), 500
 
@@ -446,7 +448,10 @@ def chat():
         resp.headers["X-RateLimit-Remaining"] = str(remaining)
         return resp
 
-    messages_payload = [{"role": "system", "content": system_prompt}] + history
+    messages_payload: list[ChatCompletionMessageParam] = cast(
+        list[ChatCompletionMessageParam],
+        [{"role": "system", "content": system_prompt}] + history,
+    )
 
     try:
         completion = client.chat.completions.create(
@@ -589,7 +594,7 @@ def generate_exercises():
     data = request.json or {}
     errors = data.get("errors", [])
     level = data.get("level", "intermediate")
-    language = data.get("language", "en")
+    _language = data.get("language", "en")  # reserved for future i18n use
 
     if not errors:
         return jsonify({"error": "No errors provided"}), 400
@@ -616,7 +621,7 @@ def generate_exercises():
             temperature=0.3,
             max_tokens=1024,
         )
-        raw = completion.choices[0].message.content.strip()
+        raw = (completion.choices[0].message.content or "").strip()
         # Try to parse JSON from response
         if raw.startswith("```"):
             raw = raw.split("```")[1]
@@ -704,7 +709,7 @@ def generate_story():
             temperature=0.75,
             max_tokens=1400,
         )
-        raw = completion.choices[0].message.content.strip()
+        raw = (completion.choices[0].message.content or "").strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -889,7 +894,7 @@ def vocab_suggest():
             temperature=0.5,
             max_tokens=900,
         )
-        raw = completion.choices[0].message.content.strip()
+        raw = (completion.choices[0].message.content or "").strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -964,7 +969,7 @@ def grammar_check():
             temperature=0.1,
             max_tokens=600,
         )
-        raw = completion.choices[0].message.content.strip()
+        raw = (completion.choices[0].message.content or "").strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -1035,7 +1040,7 @@ def pronunciation_tip():
             temperature=0.2,
             max_tokens=400,
         )
-        raw = completion.choices[0].message.content.strip()
+        raw = (completion.choices[0].message.content or "").strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -1097,7 +1102,7 @@ def daily_challenge():
             temperature=0.8,
             max_tokens=300,
         )
-        raw = completion.choices[0].message.content.strip()
+        raw = (completion.choices[0].message.content or "").strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
