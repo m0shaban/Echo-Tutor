@@ -1384,31 +1384,42 @@ document.addEventListener('DOMContentLoaded', () => {
   const mouthBars = [1, 2, 3, 4, 5]
     .map((i) => $('mouth-bar-' + i))
     .filter(Boolean);
-  function startLipSync() {
-    stopLipSync();
-    lipSyncInterval = setInterval(() => {
-      mouthBars.forEach((bar, i) => {
-        bar.style.height =
-          (i === 2 ? 8 : 4) + Math.random() * (i === 2 ? 6 : 4) + 'px';
-      });
-    }, 80);
-  }
-  function stopLipSync() {
-    if (lipSyncInterval) {
-      clearInterval(lipSyncInterval);
-      lipSyncInterval = null;
-    }
-    [3, 4, 5, 4, 3].forEach((h, i) => {
-      if (mouthBars[i]) mouthBars[i].style.height = h + 'px';
-    });
-  }
 
-  // Emotion system
-  function showEmotion(emoji, dur = 2000) {
-    if (!emotionIndicator) return;
+  function startLipSync() {
+      stopLipSync();
+      if (window.setVRMLipSync) window.setVRMLipSync(true);
+      lipSyncInterval = setInterval(() => {
+        mouthBars.forEach((bar, i) => {
+          if(bar) bar.style.height =
+            (i === 2 ? 8 : 4) + Math.random() * (i === 2 ? 6 : 4) + 'px';
+        });
+      }, 80);
+    }
+    
+    function stopLipSync() {
+      if (window.setVRMLipSync) window.setVRMLipSync(false);
+      if (lipSyncInterval) {
+        clearInterval(lipSyncInterval);
+        lipSyncInterval = null;
+      }
+      [3, 4, 5, 4, 3].forEach((h, i) => {
+        if (mouthBars[i]) mouthBars[i].style.height = h + 'px';
+      });
+    }
     emotionIndicator.textContent = emoji;
     emotionIndicator.classList.add('visible');
-    setTimeout(() => emotionIndicator.classList.remove('visible'), dur);
+    
+    if (window.setVRMEmotion) {
+      if (emoji === '🌟' || emoji === '😊' || emoji === '🎉') window.setVRMEmotion('happy');
+      else if (emoji === '🤔' || emoji === '🧐') window.setVRMEmotion('neutral');
+      else if (emoji === '💡') window.setVRMEmotion('relaxed');
+      else window.setVRMEmotion('neutral');
+    }
+
+    setTimeout(() => {
+      emotionIndicator.classList.remove('visible');
+      if (window.setVRMEmotion) window.setVRMEmotion('neutral');
+    }, dur);
   }
 
   function reactToEmotion(text) {
@@ -1463,13 +1474,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 5000);
 
     try {
-      const stream =
-          await window.EchoFeatures.Whisper.start(getSttLanguageCode(), () => {
-            if (whisperRecording) {
-              console.log('Silence detected, auto-stopping Whisper');
-              stopWhisperRecordingAndSend();
-            }
-          });
+      const stream = await window.EchoFeatures.Whisper.start(
+        getSttLanguageCode(),
+        () => {
+          if (whisperRecording) {
+            console.log('Silence detected, auto-stopping Whisper');
+            stopWhisperRecordingAndSend();
+          }
+        },
+      );
       if (!stream) {
         showToast('Microphone unavailable', 'error');
         setAvatarState('idle');

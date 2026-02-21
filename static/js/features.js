@@ -486,17 +486,19 @@ window.EchoFeatures = (function () {
         // Simple VAD (Voice Activity Detection) for auto-stop
         if (onSilence) {
           try {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const audioCtx = new (
+              window.AudioContext || window.webkitAudioContext
+            )();
             const source = audioCtx.createMediaStreamSource(stream);
             const analyser = audioCtx.createAnalyser();
             analyser.fftSize = 512;
             analyser.smoothingTimeConstant = 0.1;
             source.connect(analyser);
-            
+
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             let silenceStart = Date.now();
             let hasSpoken = false;
-            
+
             const checkSilence = () => {
               if (!this.recording) {
                 audioCtx.close().catch(() => {});
@@ -508,16 +510,19 @@ window.EchoFeatures = (function () {
                 sum += dataArray[i];
               }
               const average = sum / dataArray.length;
-              
-              if (average > 15) { // Threshold for speech
+
+              if (average > 15) {
+                // Threshold for speech
                 hasSpoken = true;
                 silenceStart = Date.now();
               } else {
-                if (hasSpoken && Date.now() - silenceStart > 2000) { // 2s silence after speech
+                if (hasSpoken && Date.now() - silenceStart > 2000) {
+                  // 2s silence after speech
                   onSilence();
                   audioCtx.close().catch(() => {});
                   return;
-                } else if (!hasSpoken && Date.now() - silenceStart > 10000) { // 10s silence without speech
+                } else if (!hasSpoken && Date.now() - silenceStart > 10000) {
+                  // 10s silence without speech
                   onSilence();
                   audioCtx.close().catch(() => {});
                   return;
@@ -543,7 +548,7 @@ window.EchoFeatures = (function () {
           resolve(null);
           return;
         }
-        
+
         const finish = () => {
           this.recording = false;
           if (this.recorder && this.recorder.stream) {
@@ -560,7 +565,7 @@ window.EchoFeatures = (function () {
         };
 
         this.recorder.onstop = finish;
-        
+
         try {
           if (this.recorder.state !== 'inactive') {
             this.recorder.stop();
