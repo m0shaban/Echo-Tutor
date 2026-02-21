@@ -52,6 +52,122 @@ document.addEventListener('DOMContentLoaded', () => {
   let ended = false;
   let turn = 'user';
 
+  // ─── UI TRANSLATIONS ───
+  const uiTranslations = {
+    en: {
+      "app_title": "ECHO <span class='accent'>TUTOR</span>",
+      "app_subtitle": "Your AI-Powered Language Tutor",
+      "choose_lang": "Choose Language",
+      "choose_level": "Choose Your Level",
+      "choose_mode": "Choose Mode",
+      "pick_topic": "Pick a Topic",
+      "pick_scenario": "Pick a Scenario",
+      "start_btn": "Start Conversation",
+      "chat_tab": "Chat",
+      "stories_tab": "Stories",
+      "cards_tab": "Cards",
+      "progress_tab": "Progress",
+      "settings_title": "Settings",
+      "close_btn": "Close",
+      "type_msg": "Type a message...",
+      "ready": "Ready",
+      "listening": "Listening...",
+      "thinking": "Thinking...",
+      "speaking": "Speaking...",
+      "streak": "🔥 Streak",
+      "xp": "XP",
+      "level": "Lv."
+    },
+    ar: {
+      "app_title": "إيكو <span class='accent'>تيوتر</span>",
+      "app_subtitle": "معلم اللغات الذكي الخاص بك",
+      "choose_lang": "اختر لغة التعلم",
+      "choose_level": "اختر مستواك",
+      "choose_mode": "اختر النمط",
+      "pick_topic": "اختر موضوعاً",
+      "pick_scenario": "اختر سيناريو",
+      "start_btn": "ابدأ المحادثة",
+      "chat_tab": "الدردشة",
+      "stories_tab": "القصص",
+      "cards_tab": "البطاقات",
+      "progress_tab": "التقدم",
+      "settings_title": "الإعدادات",
+      "close_btn": "إغلاق",
+      "type_msg": "اكتب رسالة...",
+      "ready": "مستعد",
+      "listening": "يستمع...",
+      "thinking": "يفكر...",
+      "speaking": "يتحدث...",
+      "streak": "🔥 أيام متتالية",
+      "xp": "نقطة",
+      "level": "مستوى "
+    }
+  };
+
+  let currentUILang = localStorage.getItem('echo_ui_lang') || 'en';
+
+  window.setUILanguage = function(lang) {
+    currentUILang = lang;
+    localStorage.setItem('echo_ui_lang', lang);
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = lang;
+    
+    const t = uiTranslations[lang];
+    if (!t) return;
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (t[key]) {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+          el.placeholder = t[key];
+        } else {
+          el.innerHTML = t[key];
+        }
+      }
+    });
+    
+    // Update toggle button text
+    const toggleBtn = $('ui-lang-toggle');
+    if (toggleBtn) {
+      toggleBtn.textContent = lang === 'ar' ? 'English' : 'عربي';
+    }
+  };
+
+  // ─── STREAK LOGIC ───
+  function updateStreak() {
+    const today = new Date().toDateString();
+    let lastVisit = localStorage.getItem('echo_last_visit');
+    let streak = parseInt(localStorage.getItem('echo_streak') || '0');
+
+    if (lastVisit !== today) {
+      if (lastVisit) {
+        const lastDate = new Date(lastVisit);
+        const diffTime = Math.abs(new Date() - lastDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+          streak++;
+        } else if (diffDays > 1) {
+          streak = 1; // Reset streak
+        }
+      } else {
+        streak = 1;
+      }
+      localStorage.setItem('echo_last_visit', today);
+      localStorage.setItem('echo_streak', streak);
+    }
+    
+    const streakEl = $('streak-count');
+    if (streakEl) {
+      streakEl.innerHTML = `🔥 ${streak}`;
+    }
+  }
+
+  // Initialize UI Lang and Streak
+  setTimeout(() => {
+    window.setUILanguage(currentUILang);
+    updateStreak();
+  }, 100);
+
   // Mobile detection
   const isMobile =
     /Android|iPhone|iPad|iPod|Mobile|webOS/i.test(navigator.userAgent) ||
@@ -1099,6 +1215,39 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================
   // 4. AVATAR STATE MANAGEMENT
   // ============================================
+  let currentChar = localStorage.getItem('echo_char') || 'orb';
+  const avatarOrb = document.getElementById('avatar-orb');
+
+  // Setup character buttons
+  document.querySelectorAll('.char-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentChar = btn.dataset.char;
+      localStorage.setItem('echo_char', currentChar);
+      applyCharacter(currentChar);
+    });
+  });
+
+  // Apply saved character on load
+  const savedCharBtn = document.querySelector(`.char-btn[data-char="${currentChar}"]`);
+  if (savedCharBtn) {
+    document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('active'));
+    savedCharBtn.classList.add('active');
+  }
+  if (avatarOrb) applyCharacter(currentChar);
+
+  function applyCharacter(char) {
+    if (!avatarOrb) return;
+    avatarOrb.classList.remove('char-robot', 'char-owl', 'char-star');
+    if (char !== 'orb') avatarOrb.classList.add(`char-${char}`);
+    // Hide orb face elements for non-orb characters
+    const orbFace = avatarOrb.querySelector('.orb-face');
+    if (orbFace) {
+      orbFace.style.opacity = (char === 'orb') ? '1' : '0';
+    }
+  }
+
   function setAvatarState(state) {
     avatarContainer.classList.remove(
       'idle',
@@ -1108,15 +1257,19 @@ document.addEventListener('DOMContentLoaded', () => {
       'happy',
     );
     avatarContainer.classList.add(state);
+    if (avatarOrb) {
+      avatarOrb.classList.toggle('speaking', state === 'speaking');
+    }
+    const t = uiTranslations[currentUILang] || uiTranslations.en;
     const labels = {
-      idle: 'Tap to chat',
-      listening: 'Listening...',
-      speaking: 'Speaking...',
-      thinking: 'Thinking...',
-      happy: 'Great!',
+      idle: currentUILang === 'ar' ? 'اضغط للدردشة' : 'Tap to chat',
+      listening: t.listening || 'Listening...',
+      speaking: t.speaking || 'Speaking...',
+      thinking: t.thinking || 'Thinking...',
+      happy: '✨',
     };
-    stateLabel.textContent = labels[state] || 'Ready';
-    headerStatus.textContent = labels[state] || 'Ready';
+    stateLabel.textContent = labels[state] || (t.ready || 'Ready');
+    headerStatus.textContent = labels[state] || (t.ready || 'Ready');
   }
 
   // Eye blink
@@ -2158,11 +2311,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let toastTimeout = null;
   function showToast(msg, type = '') {
     if (!toastEl) return;
-    toastEl.textContent = msg;
+    // Add icon based on type
+    const icons = { error: '⚠️', success: '✅', info: 'ℹ️', warning: '⚡' };
+    const icon = icons[type] || '💬';
+    toastEl.innerHTML = `<span>${icon}</span> <span>${msg}</span>`;
     toastEl.className = 'toast' + (type ? ' ' + type : '');
     toastEl.classList.add('visible');
     if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => toastEl.classList.remove('visible'), 3000);
+    toastTimeout = setTimeout(() => toastEl.classList.remove('visible'), 3500);
   }
 
   // ============================================

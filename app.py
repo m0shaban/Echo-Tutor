@@ -149,6 +149,23 @@ def build_system_prompt(
             (s for s in Config.SCENARIOS if s["id"] == scenario), None
         )
         if scenario_config:
+            extra = ""
+            if scenario == "ielts_speaking":
+                extra = (
+                    "\n\nIELTS SPEAKING FORMAT:\n"
+                    "- Part 1 (4-5 min): Ask familiar topic questions (hometown, work, hobbies)\n"
+                    "- Part 2 (3-4 min): Give a cue card topic, allow 1 min prep, then user speaks 2 min\n"
+                    "- Part 3 (4-5 min): Abstract discussion related to Part 2 topic\n"
+                    "After each response, give a brief band-score tip (e.g. 'To improve your score, try using more linking words like however, although...')\n"
+                    "Give a final band score estimate at the end.\n"
+                )
+            elif scenario == "toefl_speaking":
+                extra = (
+                    "\n\nTOEFL SPEAKING FORMAT:\n"
+                    "- Independent Task: Opinion question (15s prep, 45s response)\n"
+                    "- After each response, give feedback on: Task completion, Delivery, Language use, Topic development\n"
+                    "- Estimate a TOEFL speaking score (0-30) after the practice task.\n"
+                )
             return (
                 f"You are playing the role of {scenario_config['ai_role']}. "
                 f"The user is {scenario_config['user_role']}. "
@@ -159,6 +176,7 @@ def build_system_prompt(
                 f"DIFFICULTY: {level_config['label']} — {level_config['description']}.\n"
                 f"DO NOT use emoji symbols. Speak naturally. Keep responses concise (2-4 sentences).\n"
                 f"You MAY use **bold** for emphasis.\n"
+                + extra
             )
 
     topic_config = next(

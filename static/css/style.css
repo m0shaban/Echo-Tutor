@@ -97,28 +97,74 @@ body {
   top: 20px;
   left: 50%;
   transform: translateX(-50%) translateY(-100px);
-  background: var(--bg-glass);
+  background: rgba(17, 24, 39, 0.95);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
-  border: 1px solid var(--border-glass);
+  border-left: 4px solid var(--accent-primary);
   border-radius: var(--radius-md);
-  padding: 10px 20px;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
+  padding: 14px 24px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   z-index: 9999;
-  transition: transform var(--transition-normal);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .toast.visible {
   transform: translateX(-50%) translateY(0);
 }
 .toast.error {
-  border-color: var(--error);
-  color: var(--error);
+  border-left-color: var(--error);
 }
 .toast.success {
-  border-color: var(--success);
-  color: var(--success);
+  border-left-color: var(--success);
+}
+
+/* --- RTL Support --- */
+[dir="rtl"] {
+  font-family: 'Cairo', 'Inter', sans-serif;
+}
+[dir="rtl"] .header-left {
+  flex-direction: row-reverse;
+}
+[dir="rtl"] .header-left img {
+  margin-right: 0 !important;
+  margin-left: 12px !important;
+}
+[dir="rtl"] .header-right {
+  flex-direction: row-reverse;
+}
+[dir="rtl"] .message.user {
+  align-self: flex-start;
+  border-radius: 18px 18px 4px 18px;
+}
+[dir="rtl"] .message.ai {
+  align-self: flex-end;
+  border-radius: 18px 18px 18px 4px;
+}
+[dir="rtl"] .input-wrapper {
+  flex-direction: row-reverse;
+}
+[dir="rtl"] .chat-input {
+  text-align: right;
+}
+[dir="rtl"] .modal-header {
+  flex-direction: row-reverse;
+}
+[dir="rtl"] .modal-close {
+  margin-left: 0;
+  margin-right: auto;
+}
+[dir="rtl"] .nav-tab {
+  flex-direction: column;
+}
+[dir="rtl"] .streak-display {
+  margin-left: 10px;
+  margin-right: 0;
 }
 
 /* ============================================
@@ -877,14 +923,98 @@ body {
   transition: color var(--transition-normal);
 }
 
-/* --- Chat Panel --- */
-.chat-panel {
-  flex: 1;
-  background: var(--bg-glass);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-lg);
+/* Avatar Character Selector */
+.avatar-chars {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.char-btn {
+  background: rgba(255,255,255,0.05);
+  border: 2px solid transparent;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.char-btn:hover {
+  background: rgba(255,255,255,0.12);
+  transform: scale(1.15);
+}
+.char-btn.active {
+  border-color: var(--accent-primary);
+  background: rgba(99,179,237,0.15);
+  box-shadow: 0 0 12px rgba(99,179,237,0.3);
+}
+
+/* Avatar Character CSS Animations */
+.avatar-orb.char-robot {
+  background: linear-gradient(135deg, #606778, #2d3142) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 30px rgba(100,200,255,0.4) !important;
+}
+.avatar-orb.char-robot::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: #00e5ff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #00e5ff;
+  animation: robotBlink 2s infinite;
+}
+@keyframes robotBlink {
+  0%, 90%, 100% { opacity: 1; }
+  95% { opacity: 0; }
+}
+
+.avatar-orb.char-owl {
+  background: linear-gradient(135deg, #6b4c23, #3d2b0c) !important;
+  border-radius: 40% 40% 50% 50% !important;
+}
+.avatar-orb.char-owl::after {
+  content: '🦉';
+  position: absolute;
+  font-size: 40px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: owlBob 2s ease-in-out infinite;
+}
+@keyframes owlBob {
+  0%, 100% { transform: translate(-50%, -50%) rotate(-5deg); }
+  50% { transform: translate(-50%, -52%) rotate(5deg); }
+}
+
+.avatar-orb.char-star {
+  background: linear-gradient(135deg, #f6d365, #fda085) !important;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%) !important;
+  border-radius: 0 !important;
+  animation: starSpin 4s linear infinite !important;
+}
+@keyframes starSpin {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.05); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* Animated avatar speaking lips */
+.avatar-orb.speaking .orb-mouth {
+  animation: mouthTalk 0.3s steps(1) infinite;
+}
+@keyframes mouthTalk {
+  0%, 100% { border-radius: 50% 50% 60% 60%; height: 18px; }
+  50% { border-radius: 40% 40% 50% 50%; height: 8px; }
+}
   padding: 16px;
   margin-bottom: 10px;
   overflow: hidden;

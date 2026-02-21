@@ -30,7 +30,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Cairo:wght@400;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link
@@ -64,35 +64,46 @@
             "
           />
         </div>
-        <h1 class="onboarding-title">ECHO <span class="accent">TUTOR</span></h1>
-        <p class="onboarding-subtitle">Your AI-Powered Language Tutor</p>
+        <h1 class="onboarding-title" data-i18n="app_title">ECHO <span class="accent">TUTOR</span></h1>
+        <p class="onboarding-subtitle" data-i18n="app_subtitle">Your AI-Powered Language Tutor</p>
+
+        <!-- UI Language Toggle -->
+        <button id="ui-lang-toggle" onclick="window.setUILanguage(document.documentElement.lang === 'en' ? 'ar' : 'en')" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 12px; z-index: 100;">عربي</button>
 
         <!-- Language Selection -->
         <div class="selection-section">
-          <h3 class="selection-label">Choose Language</h3>
+          <h3 class="selection-label" data-i18n="choose_lang">Choose Language</h3>
           <div class="lang-cards" id="lang-cards">
             <button class="lang-card active" data-lang="en">
-              <span class="lang-flag">🇬🇧</span
-              ><span class="lang-name">English</span>
+              <span class="lang-flag">🇬🇧</span><span class="lang-name">English</span>
+            </button>
+            <button class="lang-card" data-lang="ar">
+              <span class="lang-flag">🇸🇦</span><span class="lang-name">العربية</span>
+            </button>
+            <button class="lang-card" data-lang="tr">
+              <span class="lang-flag">🇹🇷</span><span class="lang-name">Türkçe</span>
             </button>
             <button class="lang-card" data-lang="fr">
-              <span class="lang-flag">🇫🇷</span
-              ><span class="lang-name">Français</span>
+              <span class="lang-flag">🇫🇷</span><span class="lang-name">Français</span>
             </button>
             <button class="lang-card" data-lang="es">
-              <span class="lang-flag">🇪🇸</span
-              ><span class="lang-name">Español</span>
+              <span class="lang-flag">🇪🇸</span><span class="lang-name">Español</span>
             </button>
             <button class="lang-card" data-lang="de">
-              <span class="lang-flag">🇩🇪</span
-              ><span class="lang-name">Deutsch</span>
+              <span class="lang-flag">🇩🇪</span><span class="lang-name">Deutsch</span>
+            </button>
+            <button class="lang-card" data-lang="it">
+              <span class="lang-flag">🇮🇹</span><span class="lang-name">Italiano</span>
+            </button>
+            <button class="lang-card" data-lang="pt">
+              <span class="lang-flag">🇧🇷</span><span class="lang-name">Português</span>
             </button>
           </div>
         </div>
 
         <!-- Level Selection -->
         <div class="selection-section">
-          <h3 class="selection-label">Choose Your Level</h3>
+          <h3 class="selection-label" data-i18n="choose_level">Choose Your Level</h3>
           <div class="level-cards" id="level-cards">
             <button class="level-card" data-level="beginner">
               <span class="level-icon">🌱</span>
@@ -114,7 +125,7 @@
 
         <!-- Mode Selection: Topic vs Scenario -->
         <div class="selection-section">
-          <h3 class="selection-label">Choose Mode</h3>
+          <h3 class="selection-label" data-i18n="choose_mode">Choose Mode</h3>
           <div class="mode-toggle" id="mode-toggle">
             <button class="mode-btn active" data-mode="topic">💬 Topics</button>
             <button class="mode-btn" data-mode="scenario">🎭 Role-Play</button>
@@ -123,18 +134,18 @@
 
         <!-- Topic Selection -->
         <div class="selection-section" id="topic-section">
-          <h3 class="selection-label">Pick a Topic</h3>
+          <h3 class="selection-label" data-i18n="pick_topic">Pick a Topic</h3>
           <div class="topic-grid" id="topic-grid"></div>
         </div>
 
         <!-- Scenario Selection -->
         <div class="selection-section hidden" id="scenario-section">
-          <h3 class="selection-label">Pick a Scenario</h3>
+          <h3 class="selection-label" data-i18n="pick_scenario">Pick a Scenario</h3>
           <div class="scenario-grid" id="scenario-grid"></div>
         </div>
 
         <button class="start-btn" id="start-btn">
-          <span>Start Conversation</span>
+          <span data-i18n="start_btn">Start Conversation</span>
           <svg
             width="20"
             height="20"
@@ -312,8 +323,14 @@
           ></canvas>
         </div>
         <div class="emotion-indicator" id="emotion-indicator"></div>
-        <div class="state-label" id="state-label">Ready to chat</div>
-      </div>
+          <div class="state-label" id="state-label" data-i18n="ready">Ready to chat</div>
+          <!-- Character selector -->
+          <div class="avatar-chars" id="avatar-chars">
+            <button class="char-btn active" data-char="orb" title="Orb (Default)">🔵</button>
+            <button class="char-btn" data-char="robot" title="Robot">🤖</button>
+            <button class="char-btn" data-char="owl" title="Owl Tutor">🦉</button>
+            <button class="char-btn" data-char="star" title="Star">⭐</button>
+          </div>
 
       <!-- Chat Messages -->
       <div class="chat-panel">
@@ -390,7 +407,7 @@
             class="chat-input"
             id="text-input"
             type="text"
-            placeholder="Type your message..."
+            placeholder="Type your message..." data-i18n="type_msg"
             autocomplete="off"
           />
         </div>
@@ -878,19 +895,19 @@
     <nav class="bottom-nav hidden" id="bottom-nav">
       <button class="nav-tab active" data-screen="chat">
         <span class="nav-tab-icon">💬</span>
-        <span class="nav-tab-label">Chat</span>
+        <span class="nav-tab-label" data-i18n="chat_tab">Chat</span>
       </button>
       <button class="nav-tab" data-screen="stories">
         <span class="nav-tab-icon">📖</span>
-        <span class="nav-tab-label">Stories</span>
+        <span class="nav-tab-label" data-i18n="stories_tab">Stories</span>
       </button>
       <button class="nav-tab" data-screen="flashcards">
-        <span class="nav-tab-icon">🃏</span>
-        <span class="nav-tab-label">Cards</span>
+        <span class="nav-tab-icon">🎴</span>
+        <span class="nav-tab-label" data-i18n="cards_tab">Cards</span>
       </button>
       <button class="nav-tab" data-screen="progress">
         <span class="nav-tab-icon">📊</span>
-        <span class="nav-tab-label">Progress</span>
+        <span class="nav-tab-label" data-i18n="progress_tab">Progress</span>
       </button>
     </nav>
 
