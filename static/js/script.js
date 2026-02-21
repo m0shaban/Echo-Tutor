@@ -51,71 +51,74 @@ document.addEventListener('DOMContentLoaded', () => {
   let isMuted = false;
   let ended = false;
   let turn = 'user';
+  let autoMicRetryCount = 0;
+  let autoMicBlockedUntil = 0;
+  let lastAutoMicAt = 0;
 
   // ─── UI TRANSLATIONS ───
   const uiTranslations = {
     en: {
-      "app_title": "ECHO <span class='accent'>TUTOR</span>",
-      "app_subtitle": "Your AI-Powered Language Tutor",
-      "choose_lang": "Choose Language",
-      "choose_level": "Choose Your Level",
-      "choose_mode": "Choose Mode",
-      "pick_topic": "Pick a Topic",
-      "pick_scenario": "Pick a Scenario",
-      "start_btn": "Start Conversation",
-      "chat_tab": "Chat",
-      "stories_tab": "Stories",
-      "cards_tab": "Cards",
-      "progress_tab": "Progress",
-      "settings_title": "Settings",
-      "close_btn": "Close",
-      "type_msg": "Type a message...",
-      "ready": "Ready",
-      "listening": "Listening...",
-      "thinking": "Thinking...",
-      "speaking": "Speaking...",
-      "streak": "🔥 Streak",
-      "xp": "XP",
-      "level": "Lv."
+      app_title: "ECHO <span class='accent'>TUTOR</span>",
+      app_subtitle: 'Your AI-Powered Language Tutor',
+      choose_lang: 'Choose Language',
+      choose_level: 'Choose Your Level',
+      choose_mode: 'Choose Mode',
+      pick_topic: 'Pick a Topic',
+      pick_scenario: 'Pick a Scenario',
+      start_btn: 'Start Conversation',
+      chat_tab: 'Chat',
+      stories_tab: 'Stories',
+      cards_tab: 'Cards',
+      progress_tab: 'Progress',
+      settings_title: 'Settings',
+      close_btn: 'Close',
+      type_msg: 'Type a message...',
+      ready: 'Ready',
+      listening: 'Listening...',
+      thinking: 'Thinking...',
+      speaking: 'Speaking...',
+      streak: '🔥 Streak',
+      xp: 'XP',
+      level: 'Lv.',
     },
     ar: {
-      "app_title": "إيكو <span class='accent'>تيوتر</span>",
-      "app_subtitle": "معلم اللغات الذكي الخاص بك",
-      "choose_lang": "اختر لغة التعلم",
-      "choose_level": "اختر مستواك",
-      "choose_mode": "اختر النمط",
-      "pick_topic": "اختر موضوعاً",
-      "pick_scenario": "اختر سيناريو",
-      "start_btn": "ابدأ المحادثة",
-      "chat_tab": "الدردشة",
-      "stories_tab": "القصص",
-      "cards_tab": "البطاقات",
-      "progress_tab": "التقدم",
-      "settings_title": "الإعدادات",
-      "close_btn": "إغلاق",
-      "type_msg": "اكتب رسالة...",
-      "ready": "مستعد",
-      "listening": "يستمع...",
-      "thinking": "يفكر...",
-      "speaking": "يتحدث...",
-      "streak": "🔥 أيام متتالية",
-      "xp": "نقطة",
-      "level": "مستوى "
-    }
+      app_title: "إيكو <span class='accent'>تيوتر</span>",
+      app_subtitle: 'معلم اللغات الذكي الخاص بك',
+      choose_lang: 'اختر لغة التعلم',
+      choose_level: 'اختر مستواك',
+      choose_mode: 'اختر النمط',
+      pick_topic: 'اختر موضوعاً',
+      pick_scenario: 'اختر سيناريو',
+      start_btn: 'ابدأ المحادثة',
+      chat_tab: 'الدردشة',
+      stories_tab: 'القصص',
+      cards_tab: 'البطاقات',
+      progress_tab: 'التقدم',
+      settings_title: 'الإعدادات',
+      close_btn: 'إغلاق',
+      type_msg: 'اكتب رسالة...',
+      ready: 'مستعد',
+      listening: 'يستمع...',
+      thinking: 'يفكر...',
+      speaking: 'يتحدث...',
+      streak: '🔥 أيام متتالية',
+      xp: 'نقطة',
+      level: 'مستوى ',
+    },
   };
 
   let currentUILang = localStorage.getItem('echo_ui_lang') || 'en';
 
-  window.setUILanguage = function(lang) {
+  window.setUILanguage = function (lang) {
     currentUILang = lang;
     localStorage.setItem('echo_ui_lang', lang);
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
-    
+
     const t = uiTranslations[lang];
     if (!t) return;
 
-    document.querySelectorAll('[data-i18n]').forEach(el => {
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
       const key = el.getAttribute('data-i18n');
       if (t[key]) {
         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
@@ -125,7 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
-    
+
     // Update toggle button text
     const toggleBtn = $('ui-lang-toggle');
     if (toggleBtn) {
@@ -159,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('echo_last_visit', today);
       localStorage.setItem('echo_streak', streak);
     }
-    
+
     const streakEl = $('streak-count');
     if (streakEl) {
       streakEl.innerHTML = `🔥 ${streak}`;
@@ -875,7 +878,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // Sync new words to flashcard deck (echo_vocab_deck)
       if (window.echoSaveVocabWord) {
         vocabWords.forEach((v) => {
-          window.echoSaveVocabWord(v.word, v.translation || '', v.context || '');
+          window.echoSaveVocabWord(
+            v.word,
+            v.translation || '',
+            v.context || '',
+          );
         });
       }
     } catch (e) {}
@@ -1204,7 +1211,26 @@ document.addEventListener('DOMContentLoaded', () => {
     turn = 'user';
     updateStats();
     sessionTimer = setInterval(updateStats, 1000);
-    fetchStreamingResponse([]);
+    const displayName =
+      (currentUser?.full_name || currentUser?.email || '').trim().split('@')[0] ||
+      'friend';
+    const topicLabel =
+      selectedMode === 'topic'
+        ? (
+            topics.find((t) => t.id === selectedTopic)?.label ||
+            selectedTopic ||
+            'free talk'
+          )
+        : selectedScenario || 'practice';
+    const instantGreeting =
+      currentUILang === 'ar'
+        ? `مرحباً ${displayName}! جاهز نبدأ الآن؟ اخترت ${topicLabel}.`
+        : `Welcome ${displayName}! Ready to start now? You chose ${topicLabel}.`;
+    addMessage(instantGreeting, 'assistant');
+    setAvatarState('idle');
+    if (autoListen && !ended) {
+      scheduleAutoMic(260);
+    }
   }
 
   function updateStats() {
@@ -1223,9 +1249,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const avatarOrb = document.getElementById('avatar-orb');
 
   // Setup character buttons
-  document.querySelectorAll('.char-btn').forEach(btn => {
+  document.querySelectorAll('.char-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('active'));
+      document
+        .querySelectorAll('.char-btn')
+        .forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       currentChar = btn.dataset.char;
       localStorage.setItem('echo_char', currentChar);
@@ -1234,9 +1262,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Apply saved character on load
-  const savedCharBtn = document.querySelector(`.char-btn[data-char="${currentChar}"]`);
+  const savedCharBtn = document.querySelector(
+    `.char-btn[data-char="${currentChar}"]`,
+  );
   if (savedCharBtn) {
-    document.querySelectorAll('.char-btn').forEach(b => b.classList.remove('active'));
+    document
+      .querySelectorAll('.char-btn')
+      .forEach((b) => b.classList.remove('active'));
     savedCharBtn.classList.add('active');
   }
   if (avatarOrb) applyCharacter(currentChar);
@@ -1248,7 +1280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hide orb face elements for non-orb characters
     const orbFace = avatarOrb.querySelector('.orb-face');
     if (orbFace) {
-      orbFace.style.opacity = (char === 'orb') ? '1' : '0';
+      orbFace.style.opacity = char === 'orb' ? '1' : '0';
     }
   }
 
@@ -1272,8 +1304,37 @@ document.addEventListener('DOMContentLoaded', () => {
       thinking: t.thinking || 'Thinking...',
       happy: '✨',
     };
-    stateLabel.textContent = labels[state] || (t.ready || 'Ready');
-    headerStatus.textContent = labels[state] || (t.ready || 'Ready');
+    stateLabel.textContent = labels[state] || t.ready || 'Ready';
+    headerStatus.textContent = labels[state] || t.ready || 'Ready';
+  }
+
+  function resetAutoMicGuard() {
+    autoMicRetryCount = 0;
+    autoMicBlockedUntil = 0;
+  }
+
+  function registerAutoMicRetry() {
+    autoMicRetryCount += 1;
+    if (autoMicRetryCount >= 3) {
+      autoMicBlockedUntil = Date.now() + 2500;
+      autoMicRetryCount = 0;
+    }
+  }
+
+  function scheduleAutoMic(delayMs = 320) {
+    if (!autoListen || ended || turn !== 'user') return;
+    if (Date.now() < autoMicBlockedUntil) return;
+
+    setTimeout(() => {
+      if (!autoListen || ended || turn !== 'user') return;
+      if (Date.now() < autoMicBlockedUntil) return;
+      if (recognizing || whisperRecording) return;
+
+      const now = Date.now();
+      if (now - lastAutoMicAt < 450) return;
+      lastAutoMicAt = now;
+      openMic();
+    }, Math.max(220, delayMs));
   }
 
   // Eye blink
@@ -1433,7 +1494,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!blob) {
       setAvatarState('idle');
       if (autoListen && !ended && turn === 'user') {
-        setTimeout(() => openMic(), 420);
+        registerAutoMicRetry();
+        scheduleAutoMic(520);
       }
       return;
     }
@@ -1446,21 +1508,22 @@ document.addEventListener('DOMContentLoaded', () => {
       setAvatarState('idle');
       showToast(result?.error || 'Whisper transcription failed', 'error');
       if (autoListen && !ended && turn === 'user') {
-        setTimeout(() => openMic(), 520);
+        registerAutoMicRetry();
+        scheduleAutoMic(620);
       }
       return;
     }
     const transcript = result?.text?.trim();
     if (!transcript) {
       setAvatarState('idle');
-      // showToast('No speech detected', ''); // Too spammy for users
       if (autoListen && !ended && turn === 'user') {
-        // Retry once, then stop to avoid loop
-        // setTimeout(() => openMic(), 520);
-        // Actually, better to just let the user tap again if silence
+        registerAutoMicRetry();
+        scheduleAutoMic(560);
       }
       return;
     }
+
+    resetAutoMicGuard();
 
     if (enforceGuestTrialLimit()) {
       setAvatarState('idle');
@@ -1487,6 +1550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     recognition.onresult = (event) => {
       if (turn === 'user') {
         if (enforceGuestTrialLimit()) return;
+        resetAutoMicGuard();
         const result = event.results[0][0];
         const transcript = result.transcript;
         const confidence = result.confidence; // 0-1
@@ -1516,13 +1580,15 @@ document.addEventListener('DOMContentLoaded', () => {
     recognition.onend = () => {
       recognizing = false;
       micBtn.classList.remove('active');
-      if (autoListen && !ended && turn === 'user') openMic();
+      if (autoListen && !ended && turn === 'user') scheduleAutoMic(320);
       else if (turn === 'user') setAvatarState('idle');
     };
 
     recognition.onerror = (event) => {
       recognizing = false;
       micBtn.classList.remove('active');
+      if (event.error === 'no-speech') registerAutoMicRetry();
+      else resetAutoMicGuard();
       if (event.error !== 'no-speech' && event.error !== 'aborted') {
         showToast('Mic error: ' + event.error, 'error');
       }
@@ -1640,6 +1706,7 @@ document.addEventListener('DOMContentLoaded', () => {
         topic: selectedTopic,
         language: selectedLanguage,
         scenario: selectedScenario,
+        user_name: currentUser?.full_name || currentUser?.email || '',
       }),
       signal,
     });
@@ -1720,6 +1787,7 @@ document.addEventListener('DOMContentLoaded', () => {
           topic: selectedTopic,
           language: selectedLanguage,
           scenario: selectedScenario,
+          user_name: currentUser?.full_name || currentUser?.email || '',
         }),
         signal: streamController.signal,
       });
@@ -2114,6 +2182,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (enforceGuestTrialLimit()) return;
     const text = textInput.value.trim();
     if (!text || ended) return;
+    resetAutoMicGuard();
     // Always allow interrupt: cancel any ongoing TTS/STT and take control
     if (turn !== 'user') {
       try {
