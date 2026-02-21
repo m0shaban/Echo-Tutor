@@ -1212,15 +1212,14 @@ document.addEventListener('DOMContentLoaded', () => {
     updateStats();
     sessionTimer = setInterval(updateStats, 1000);
     const displayName =
-      (currentUser?.full_name || currentUser?.email || '').trim().split('@')[0] ||
-      'friend';
+      (currentUser?.full_name || currentUser?.email || '')
+        .trim()
+        .split('@')[0] || 'friend';
     const topicLabel =
       selectedMode === 'topic'
-        ? (
-            topics.find((t) => t.id === selectedTopic)?.label ||
-            selectedTopic ||
-            'free talk'
-          )
+        ? topics.find((t) => t.id === selectedTopic)?.label ||
+          selectedTopic ||
+          'free talk'
         : selectedScenario || 'practice';
     const instantGreeting =
       currentUILang === 'ar'
@@ -1325,16 +1324,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!autoListen || ended || turn !== 'user') return;
     if (Date.now() < autoMicBlockedUntil) return;
 
-    setTimeout(() => {
-      if (!autoListen || ended || turn !== 'user') return;
-      if (Date.now() < autoMicBlockedUntil) return;
-      if (recognizing || whisperRecording) return;
+    setTimeout(
+      () => {
+        if (!autoListen || ended || turn !== 'user') return;
+        if (Date.now() < autoMicBlockedUntil) return;
+        if (recognizing || whisperRecording) return;
 
-      const now = Date.now();
-      if (now - lastAutoMicAt < 450) return;
-      lastAutoMicAt = now;
-      openMic();
-    }, Math.max(220, delayMs));
+        const now = Date.now();
+        if (now - lastAutoMicAt < 450) return;
+        lastAutoMicAt = now;
+        openMic();
+      },
+      Math.max(220, delayMs),
+    );
   }
 
   // Eye blink
@@ -1462,9 +1464,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const stream =
-        await window.EchoFeatures.Whisper.start(getSttLanguageCode());
-      clearTimeout(safetyTimer);
-
+          await window.EchoFeatures.Whisper.start(getSttLanguageCode(), () => {
+            if (whisperRecording) {
+              console.log('Silence detected, auto-stopping Whisper');
+              stopWhisperRecordingAndSend();
+            }
+          });
       if (!stream) {
         showToast('Microphone unavailable', 'error');
         setAvatarState('idle');

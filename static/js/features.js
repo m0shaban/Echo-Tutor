@@ -461,7 +461,7 @@ window.EchoFeatures = (function () {
       } catch (e) {}
       return '';
     },
-    async start(lang) {
+    async start(lang, onSilence) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
@@ -482,6 +482,55 @@ window.EchoFeatures = (function () {
         };
         this.recorder.start(250);
         this.recording = true;
+
+        // Simple VAD (Voice Activity Detection) for auto-stop
+        if (onSilence) {
+          try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioCtx.createMediaStreamSource(stream);
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 512;
+            analyser.smoothingTimeConstant = 0.1;
+            source.connect(analyser);
+            
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            let silenceStart = Date.now();
+            let hasSpoken = false;
+            
+            const checkSilence = () => {
+              if (!this.recording) {
+                audioCtx.close().catch(() => {});
+                return;
+              }
+              analyser.getByteFrequencyData(dataArray);
+              let sum = 0;
+              for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+              }
+              const average = sum / dataArray.length;
+              
+              if (average > 15) { // Threshold for speech
+                hasSpoken = true;
+                silenceStart = Date.now();
+              } else {
+                if (hasSpoken && Date.now() - silenceStart > 2000) { // 2s silence after speech
+                  onSilence();
+                  audioCtx.close().catch(() => {});
+                  return;
+                } else if (!hasSpoken && Date.now() - silenceStart > 10000) { // 10s silence without speech
+                  onSilence();
+                  audioCtx.close().catch(() => {});
+                  return;
+                }
+              }
+              requestAnimationFrame(checkSilence);
+            };
+            checkSilence();
+          } catch (e) {
+            console.warn('VAD setup failed:', e);
+          }
+        }
+
         return stream;
       } catch (e) {
         console.error('Whisper mic error:', e);
@@ -494,21 +543,34 @@ window.EchoFeatures = (function () {
           resolve(null);
           return;
         }
-        this.recorder.onstop = () => {
+        
+        const finish = () => {
+          this.recording = false;
+          if (this.recorder && this.recorder.stream) {
+            this.recorder.stream.getTracks().forEach((t) => t.stop());
+          }
           if (!this.chunks.length) {
-            this.recording = false;
-            this.recorder.stream?.getTracks().forEach((t) => t.stop());
             resolve(null);
             return;
           }
           const blob = new Blob(this.chunks, {
             type: this.mimeType || this.chunks[0]?.type || 'audio/webm',
           });
-          this.recording = false;
-          this.recorder.stream?.getTracks().forEach((t) => t.stop());
           resolve(blob);
         };
-        this.recorder.stop();
+
+        this.recorder.onstop = finish;
+        
+        try {
+          if (this.recorder.state !== 'inactive') {
+            this.recorder.stop();
+          } else {
+            finish();
+          }
+        } catch (e) {
+          console.error('Error stopping recorder:', e);
+          finish();
+        }
       });
     },
     async transcribe(blob, lang) {
