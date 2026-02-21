@@ -35,7 +35,7 @@ window.EchoExtra = (function () {
           if (!el) return;
           const name = id.replace('-screen', '');
           el.classList.toggle('hidden', name !== screen);
-        }
+        },
       );
 
       if (chat) {
@@ -51,7 +51,7 @@ window.EchoExtra = (function () {
   // ─── POLLINATIONS IMAGE URL ──────────────────────────────
   function pollinationsUrl(prompt, seed) {
     const encoded = encodeURIComponent(
-      prompt + ', digital art, cinematic lighting, high quality illustration'
+      prompt + ', digital art, cinematic lighting, high quality illustration',
     );
     const s = seed || Math.floor(Math.random() * 999999);
     return `https://image.pollinations.ai/prompt/${encoded}?width=800&height=420&nologo=true&seed=${s}&model=flux`;
@@ -68,7 +68,9 @@ window.EchoExtra = (function () {
       // Level buttons
       document.querySelectorAll('.story-lvl-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.story-lvl-btn').forEach((b) => b.classList.remove('active'));
+          document
+            .querySelectorAll('.story-lvl-btn')
+            .forEach((b) => b.classList.remove('active'));
           btn.classList.add('active');
           this.currentLevel = btn.dataset.level;
         });
@@ -77,7 +79,9 @@ window.EchoExtra = (function () {
       // Topic chips
       document.querySelectorAll('.story-topic-chip').forEach((chip) => {
         chip.addEventListener('click', () => {
-          document.querySelectorAll('.story-topic-chip').forEach((c) => c.classList.remove('active'));
+          document
+            .querySelectorAll('.story-topic-chip')
+            .forEach((c) => c.classList.remove('active'));
           chip.classList.add('active');
           this.currentTopic = chip.dataset.topic;
         });
@@ -90,10 +94,14 @@ window.EchoExtra = (function () {
       $('story-new-btn')?.addEventListener('click', () => this.generate());
 
       // Listen button
-      $('story-listen-btn')?.addEventListener('click', () => this.listenToStory());
+      $('story-listen-btn')?.addEventListener('click', () =>
+        this.listenToStory(),
+      );
 
       // Practice button
-      $('story-practice-btn')?.addEventListener('click', () => this.practiceStory());
+      $('story-practice-btn')?.addEventListener('click', () =>
+        this.practiceStory(),
+      );
     },
 
     async generate() {
@@ -146,8 +154,7 @@ window.EchoExtra = (function () {
         console.error('Story generation failed:', err);
         if (shimmer) shimmer.classList.add('hidden');
         if (placeholder) placeholder.classList.remove('hidden');
-        if (label)
-          label.textContent = '❌ Failed. Try again?';
+        if (label) label.textContent = '❌ Failed. Try again?';
       } finally {
         this.generating = false;
         if (btn) btn.disabled = false;
@@ -176,7 +183,7 @@ window.EchoExtra = (function () {
           const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           storyText = storyText.replace(
             new RegExp(`\\b(${escaped})\\b`, 'gi'),
-            `<span class="story-word-highlight" title="${w}">$1</span>`
+            `<span class="story-word-highlight" title="${w}">$1</span>`,
           );
         });
         bodyEl.innerHTML = storyText;
@@ -186,7 +193,7 @@ window.EchoExtra = (function () {
           el.addEventListener('click', () => {
             const word = el.textContent.trim().toLowerCase();
             const entry = (data.vocabulary || []).find(
-              (v) => v.word?.toLowerCase() === word
+              (v) => v.word?.toLowerCase() === word,
             );
             if (entry) {
               showToast(`${entry.word} → ${entry.translation}`);
@@ -227,7 +234,9 @@ window.EchoExtra = (function () {
         })
           .then((r) => r.json())
           .then((imgData) => {
-            const url = imgData.url || pollinationsUrl(data.image_prompt || this.currentTopic);
+            const url =
+              imgData.url ||
+              pollinationsUrl(data.image_prompt || this.currentTopic);
             imgEl.alt = data.title || 'Story illustration';
             imgEl.onload = () => {
               if (shimmer) shimmer.classList.add('hidden');
@@ -246,7 +255,9 @@ window.EchoExtra = (function () {
               if (shimmer) shimmer.classList.add('hidden');
               imgEl.classList.remove('hidden');
             };
-            imgEl.onerror = () => { if (shimmer) shimmer.classList.add('hidden'); };
+            imgEl.onerror = () => {
+              if (shimmer) shimmer.classList.add('hidden');
+            };
             imgEl.src = url;
           });
       } else {
@@ -267,9 +278,15 @@ window.EchoExtra = (function () {
       speechSynthesis.cancel();
       const lang = window._echoLanguage || 'en';
       const langVoiceMap = {
-        en: 'en-US', fr: 'fr-FR', es: 'es-ES',
-        de: 'de-DE', ar: 'ar-SA', it: 'it-IT',
-        pt: 'pt-BR', ja: 'ja-JP', zh: 'zh-CN',
+        en: 'en-US',
+        fr: 'fr-FR',
+        es: 'es-ES',
+        de: 'de-DE',
+        ar: 'ar-SA',
+        it: 'it-IT',
+        pt: 'pt-BR',
+        ja: 'ja-JP',
+        zh: 'zh-CN',
       };
       const utter = new SpeechSynthesisUtterance(this.currentStory.story);
       utter.lang = langVoiceMap[lang] || 'en-US';
@@ -306,12 +323,14 @@ window.EchoExtra = (function () {
         });
         document.querySelectorAll('.srs-rate-btn').forEach((btn) => {
           btn.addEventListener('click', () =>
-            this.rate(parseInt(btn.dataset.rating))
+            this.rate(parseInt(btn.dataset.rating)),
           );
         });
         document.querySelectorAll('.fc-deck-btn').forEach((btn) => {
           btn.addEventListener('click', () => {
-            document.querySelectorAll('.fc-deck-btn').forEach((b) => b.classList.remove('active'));
+            document
+              .querySelectorAll('.fc-deck-btn')
+              .forEach((b) => b.classList.remove('active'));
             btn.classList.add('active');
             this.loadDeck(btn.dataset.deck);
           });
@@ -328,7 +347,9 @@ window.EchoExtra = (function () {
         this.deck = all.slice(-20).reverse();
       } else {
         // All saved words sorted by difficulty
-        this.deck = all.sort((a, b) => (a.srs_interval || 1) - (b.srs_interval || 1));
+        this.deck = all.sort(
+          (a, b) => (a.srs_interval || 1) - (b.srs_interval || 1),
+        );
       }
       this.index = 0;
       this.flipped = false;
@@ -344,7 +365,8 @@ window.EchoExtra = (function () {
         return new Date(w.next_review) <= new Date();
       }).length;
       if (el('fc-total-count')) el('fc-total-count').textContent = all.length;
-      if (el('fc-mastered-count')) el('fc-mastered-count').textContent = mastered;
+      if (el('fc-mastered-count'))
+        el('fc-mastered-count').textContent = mastered;
       if (el('fc-due-count')) el('fc-due-count').textContent = due;
     },
 
@@ -392,7 +414,8 @@ window.EchoExtra = (function () {
       if (wordEl) wordEl.textContent = w.word || '';
       if (translEl) translEl.textContent = w.translation || '';
       if (exEl) exEl.textContent = w.example ? `"${w.example}"` : '';
-      if (tagEl) tagEl.textContent = (window._echoLanguage || 'en').toUpperCase();
+      if (tagEl)
+        tagEl.textContent = (window._echoLanguage || 'en').toUpperCase();
 
       // Progress dots
       const dots = $('srs-dots');
@@ -402,7 +425,9 @@ window.EchoExtra = (function () {
         const start = Math.max(0, this.index - 3);
         for (let i = start; i < start + visible && i < this.deck.length; i++) {
           const dot = document.createElement('div');
-          dot.className = 'srs-dot' + (i === this.index ? ' active' : i < this.index ? ' done' : '');
+          dot.className =
+            'srs-dot' +
+            (i === this.index ? ' active' : i < this.index ? ' done' : '');
           dots.appendChild(dot);
         }
       }
@@ -422,9 +447,15 @@ window.EchoExtra = (function () {
       speechSynthesis.cancel();
       const lang = window._echoLanguage || 'en';
       const languageMap = {
-        en: 'en-US', fr: 'fr-FR', es: 'es-ES',
-        de: 'de-DE', ar: 'ar-SA', it: 'it-IT',
-        pt: 'pt-BR', ja: 'ja-JP', zh: 'zh-CN',
+        en: 'en-US',
+        fr: 'fr-FR',
+        es: 'es-ES',
+        de: 'de-DE',
+        ar: 'ar-SA',
+        it: 'it-IT',
+        pt: 'pt-BR',
+        ja: 'ja-JP',
+        zh: 'zh-CN',
       };
       const utter = new SpeechSynthesisUtterance(this.deck[this.index].word);
       utter.lang = languageMap[lang] || 'en-US';
@@ -439,14 +470,14 @@ window.EchoExtra = (function () {
       // SRS interval update
       const current = w.srs_interval || 1;
       const intervalMap = {
-        1: 1,    // Again → repeat tomorrow
-        2: Math.max(1, current),     // Hard → no increase
-        3: current * 2,              // Good → double
-        4: current * 4,              // Easy → 4x
+        1: 1, // Again → repeat tomorrow
+        2: Math.max(1, current), // Hard → no increase
+        3: current * 2, // Good → double
+        4: current * 4, // Easy → 4x
       };
       w.srs_interval = Math.min(intervalMap[rating] || current, 60);
       w.next_review = new Date(
-        Date.now() + w.srs_interval * 24 * 60 * 60 * 1000
+        Date.now() + w.srs_interval * 24 * 60 * 60 * 1000,
       ).toISOString();
 
       // Save updated word
@@ -470,7 +501,10 @@ window.EchoExtra = (function () {
       const level = Math.floor(totalXP / 100) + 1;
       const levelPct = (totalXP % 100) + '%';
 
-      const setVal = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+      const setVal = (id, v) => {
+        const el = $(id);
+        if (el) el.textContent = v;
+      };
       setVal('prog-xp', totalXP.toLocaleString());
       setVal('prog-streak', xp.streak || 0);
       setVal('prog-msgs', xp.messages || 0);
@@ -497,7 +531,8 @@ window.EchoExtra = (function () {
         });
         const data = await res.json();
         if (!Array.isArray(data) || !data.length) {
-          lb.innerHTML = '<div class="lb-loading">No data yet. Chat to earn XP and appear here!</div>';
+          lb.innerHTML =
+            '<div class="lb-loading">No data yet. Chat to earn XP and appear here!</div>';
           return;
         }
         lb.innerHTML = '';
@@ -506,7 +541,7 @@ window.EchoExtra = (function () {
           const row = document.createElement('div');
           row.className = 'lb-row';
           row.innerHTML = `
-            <div class="lb-rank ${rankClasses[i] || ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}</div>
+            <div class="lb-rank ${rankClasses[i] || ''}">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</div>
             <div class="lb-flag">${entry.flag || '🌍'}</div>
             <div class="lb-info">
               <div class="lb-name">${escapeHtml(entry.name || 'Anonymous')}</div>
@@ -516,24 +551,85 @@ window.EchoExtra = (function () {
           lb.appendChild(row);
         });
       } catch (e) {
-        lb.innerHTML = '<div class="lb-loading">Could not load leaderboard.</div>';
+        lb.innerHTML =
+          '<div class="lb-loading">Could not load leaderboard.</div>';
       }
     },
 
     renderBadges() {
       const ALL_BADGES = [
-        { id: 'first_chat', icon: '💬', label: 'First Chat', description: 'Send your first message' },
-        { id: 'ten_messages', icon: '🗣️', label: 'Chatterbox', description: '10 messages sent' },
-        { id: 'fifty_messages', icon: '📢', label: 'Conversationalist', description: '50 messages' },
-        { id: 'first_correction', icon: '✏️', label: 'Learning Mindset', description: 'Received a correction' },
-        { id: 'vocab_10', icon: '📚', label: 'Word Collector', description: '10 vocabulary words' },
-        { id: 'streak_3', icon: '🔥', label: '3-Day Streak', description: 'Practice 3 days in a row' },
-        { id: 'streak_7', icon: '🏆', label: 'Weekly Warrior', description: '7-day streak' },
-        { id: 'streak_30', icon: '👑', label: 'Monthly Master', description: '30-day streak' },
-        { id: 'exercise_10', icon: '🎯', label: 'Exercise Pro', description: '10 exercises done' },
-        { id: 'level_5', icon: '⭐', label: 'Rising Star', description: 'Reach Level 5' },
-        { id: 'level_10', icon: '🌟', label: 'Expert', description: 'Reach Level 10' },
-        { id: 'perfect_pronun', icon: '🎙️', label: 'Perfect Pronunciation', description: 'Score 10/10 pronunciation' },
+        {
+          id: 'first_chat',
+          icon: '💬',
+          label: 'First Chat',
+          description: 'Send your first message',
+        },
+        {
+          id: 'ten_messages',
+          icon: '🗣️',
+          label: 'Chatterbox',
+          description: '10 messages sent',
+        },
+        {
+          id: 'fifty_messages',
+          icon: '📢',
+          label: 'Conversationalist',
+          description: '50 messages',
+        },
+        {
+          id: 'first_correction',
+          icon: '✏️',
+          label: 'Learning Mindset',
+          description: 'Received a correction',
+        },
+        {
+          id: 'vocab_10',
+          icon: '📚',
+          label: 'Word Collector',
+          description: '10 vocabulary words',
+        },
+        {
+          id: 'streak_3',
+          icon: '🔥',
+          label: '3-Day Streak',
+          description: 'Practice 3 days in a row',
+        },
+        {
+          id: 'streak_7',
+          icon: '🏆',
+          label: 'Weekly Warrior',
+          description: '7-day streak',
+        },
+        {
+          id: 'streak_30',
+          icon: '👑',
+          label: 'Monthly Master',
+          description: '30-day streak',
+        },
+        {
+          id: 'exercise_10',
+          icon: '🎯',
+          label: 'Exercise Pro',
+          description: '10 exercises done',
+        },
+        {
+          id: 'level_5',
+          icon: '⭐',
+          label: 'Rising Star',
+          description: 'Reach Level 5',
+        },
+        {
+          id: 'level_10',
+          icon: '🌟',
+          label: 'Expert',
+          description: 'Reach Level 10',
+        },
+        {
+          id: 'perfect_pronun',
+          icon: '🎙️',
+          label: 'Perfect Pronunciation',
+          description: 'Score 10/10 pronunciation',
+        },
       ];
       const grid = $('badges-progress-grid');
       if (!grid || !window.EchoFeatures?.XP) return;
@@ -553,16 +649,26 @@ window.EchoExtra = (function () {
   function saveVocabWord(word, translation, example) {
     if (!word || !translation) return;
     const deck = loadVocabWords();
-    const exists = deck.find((w) => w.word?.toLowerCase() === word.toLowerCase());
+    const exists = deck.find(
+      (w) => w.word?.toLowerCase() === word.toLowerCase(),
+    );
     if (!exists) {
-      deck.push({ word, translation, example: example || '', srs_interval: 1, added: new Date().toISOString() });
+      deck.push({
+        word,
+        translation,
+        example: example || '',
+        srs_interval: 1,
+        added: new Date().toISOString(),
+      });
       localStorage.setItem('echo_vocab_deck', JSON.stringify(deck));
     }
   }
 
   function updateVocabWord(updated) {
     const deck = loadVocabWords();
-    const idx = deck.findIndex((w) => w.word?.toLowerCase() === updated.word?.toLowerCase());
+    const idx = deck.findIndex(
+      (w) => w.word?.toLowerCase() === updated.word?.toLowerCase(),
+    );
     if (idx >= 0) deck[idx] = { ...deck[idx], ...updated };
     else deck.push(updated);
     localStorage.setItem('echo_vocab_deck', JSON.stringify(deck));
@@ -589,7 +695,10 @@ window.EchoExtra = (function () {
   function initLeaderboardRefreshBtn() {
     $('lb-refresh-btn')?.addEventListener('click', () => {
       const btn = $('lb-refresh-btn');
-      if (btn) { btn.style.transform = 'rotate(360deg)'; setTimeout(() => btn.style.transform = '', 400); }
+      if (btn) {
+        btn.style.transform = 'rotate(360deg)';
+        setTimeout(() => (btn.style.transform = ''), 400);
+      }
       Progress.loadLeaderboard();
     });
   }
